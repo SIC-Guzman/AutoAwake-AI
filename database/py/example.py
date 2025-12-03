@@ -15,9 +15,9 @@ from autoawake_db import (
 
 def demo():
     db = Database(DBConfig(
-        host="mysql-db-1.cyjwig6wkals.us-east-1.rds.amazonaws.com",
-        user="pythonClient",
-        password="securepass123",
+        host="localhost",
+        user="user_autoawake",
+        password="securepassword",
         database="AutoAwakeAI",
     ))
 
