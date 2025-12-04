@@ -16,8 +16,8 @@ from autoawake_db import (
 def demo():
     db = Database(DBConfig(
         host="localhost",
-        user="user_autoawake",
-        password="securepassword",
+        user="autoawake_user",
+        password="super_secret",
         database="AutoAwakeAI",
     ))
 
