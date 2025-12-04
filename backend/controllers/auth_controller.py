@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.services.auth_service import AuthService
-from app.utils.sql_connection import get_db
+from services.auth_service import AuthService
+from utils.sql_connection import get_db
 
 
 class AuthController:

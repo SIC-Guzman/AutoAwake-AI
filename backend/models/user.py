@@ -1,6 +1,8 @@
+
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from app.utils.sql_connection import Base
+from utils.sql_connection import Base
+from models.role import Role
 
 
 class User(Base):

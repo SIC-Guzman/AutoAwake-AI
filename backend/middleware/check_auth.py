@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.utils.web_token import verify_token
+from utils.web_token import verify_token
 
 # FastAPI trae un esquema de seguridad para extraer el header Authorization
 security = HTTPBearer()
