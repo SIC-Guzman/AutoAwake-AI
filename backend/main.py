@@ -1,0 +1,46 @@
+from dotenv import load_dotenv
+load_dotenv()
+import os
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import JSONResponse
+
+# Import routers
+from app.routes import auth_router
+
+# Cargar variables de entorno
+
+
+app = FastAPI(
+    title="Backend API",
+    description="API con FastAPI y SQLAlchemy",
+    version="1.0.0",
+    docs_url=None,   # Desactivamos la doc por defecto
+    redoc_url=None   # Desactivamos Redoc (opcional)
+)
+
+# Configuración de CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[os.getenv("CORS_ORIGIN", "*")],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
+
+# Ruta para Swagger (equivalente a swagger-ui-express)
+@app.get("/api-docs", include_in_schema=False)
+async def custom_swagger_ui():
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - API Docs"
+    )
+
+# Root endpoint
+@app.get("/")
+async def root():
+    return JSONResponse(content={"message": "OK"}, status_code=200)
+
+# Registrar routers
+app.include_router(auth_router)
