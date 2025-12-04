@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+import os
 import mysql.connector
 from mysql.connector import Error, pooling
 
@@ -26,11 +27,11 @@ from mysql.connector import Error, pooling
 
 @dataclass
 class DBConfig:
-    host: str = "localhost"
-    port: int = 3306
-    user: str = "autoawake_user"      # <-- AJUSTA
-    password: str = "super_secret"    # <-- AJUSTA
-    database: str = "AutoAwakeAI"     # nombre tal cual en tu schema
+    host: str = os.getenv("DB_HOST", "localhost")
+    port: int = int(os.getenv("DB_PORT", "3306"))
+    user: str = os.getenv("DB_USER", "autoawake_user")
+    password: str = os.getenv("DB_PASS", "super_secret")
+    database: str = os.getenv("DB_NAME", "AutoAwakeAI")
     pool_name: str = "autoawake_pool"
     pool_size: int = 5
 

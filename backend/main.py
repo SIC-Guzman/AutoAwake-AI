@@ -7,7 +7,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 
 # Import routers
-from app.routes import auth_router
+from routes.auth_router import router as auth_router
 
 # Cargar variables de entorno
 

@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from app.models.user import User
-from app.utils.handle_bcrypt import hash_password, verify_password
-from app.utils.web_token import gen_token
+from models.user import User
+from utils.handle_bcrypt import hash_password, verify_password
+from utils.web_token import gen_token
 
 
 class AuthService:
