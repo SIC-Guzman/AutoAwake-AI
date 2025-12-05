@@ -1,0 +1,43 @@
+### Login User
+# @name loginUser
+POST http://localhost:3001/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@autoawake.com",
+  "password": "securepassword"
+}
+
+### Start Trip
+# @name startTrip
+POST http://localhost:3001/trips/
+Content-Type: application/json
+Authorization: Bearer {{loginUser.response.body.token}}
+
+{
+  "vehicle_id": 1,
+  "driver_id": 1,
+  "origin": "Warehouse A",
+  "destination": "Store B"
+}
+
+### Get Trip by ID
+GET http://localhost:3001/trips/{{startTrip.response.body.trip_id}}
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### End Trip
+POST http://localhost:3001/trips/{{startTrip.response.body.trip_id}}/end
+Content-Type: application/json
+Authorization: Bearer {{loginUser.response.body.token}}
+
+{
+  "status": "FINISHED"
+}
+
+### Get Trips by Driver
+GET http://localhost:3001/trips/driver/1
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Get Trips by Vehicle
+GET http://localhost:3001/trips/vehicle/1
+Authorization: Bearer {{loginUser.response.body.token}}
