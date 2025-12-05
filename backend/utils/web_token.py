@@ -5,9 +5,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-JWT_SECRET = os.getenv("JWT_SECRET", "supersecret")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise ValueError("JWT_SECRET is not set in the environment variables")
 JWT_ALGORITHM = "HS256"
-
 
 def gen_token(user: dict) -> str:
     # Genera un JWT token para el usuario.
