@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 # Import routers
 from routes.auth_router import router as auth_router
 from routes.drivers_router import router as drivers_router
+from routes.vehicles_router import router as vehicles_router
 from routes.trips_router import router as trips_router
 from routes.alerts_router import router as alerts_router
 from routes.issues_router import router as issues_router
@@ -50,6 +51,7 @@ async def root():
 # Registrar routers
 app.include_router(auth_router)
 app.include_router(drivers_router)
+app.include_router(vehicles_router)
 app.include_router(trips_router)
 app.include_router(alerts_router)
 app.include_router(issues_router)
