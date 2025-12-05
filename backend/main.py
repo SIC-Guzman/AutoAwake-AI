@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 # Import routers
 from routes.auth_router import router as auth_router
 from routes.drivers_router import router as drivers_router
+from routes.alerts_router import router as alerts_router
 
 # Cargar variables de entorno
 
@@ -46,3 +47,4 @@ async def root():
 # Registrar routers
 app.include_router(auth_router)
 app.include_router(drivers_router)
+app.include_router(alerts_router)
