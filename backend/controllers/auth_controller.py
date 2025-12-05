@@ -13,7 +13,8 @@ class AuthController:
             return self.auth_service.login(email, password)
         except HTTPException as e:
             raise e
-        except Exception:
+        except Exception as e:
+            print(f"Error in login: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Internal Server Error"
@@ -24,7 +25,8 @@ class AuthController:
             return self.auth_service.register(name, email, password, role_id)
         except HTTPException as e:
             raise e
-        except Exception:
+        except Exception as e:
+            print(f"Error in register: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Internal Server Error"
