@@ -18,12 +18,22 @@ from routes.devices_router import router as devices_router
 # Cargar variables de entorno
 
 
+from contextlib import asynccontextmanager
+from services.mqtt_service import mqtt_service
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    mqtt_service.start()
+    yield
+    mqtt_service.stop()
+
 app = FastAPI(
     title="Backend API",
     description="API con FastAPI y SQLAlchemy",
     version="1.0.0",
     docs_url=None,   # Desactivamos la doc por defecto
-    redoc_url=None   # Desactivamos Redoc (opcional)
+    redoc_url=None,  # Desactivamos Redoc (opcional)
+    lifespan=lifespan
 )
 
 # Configuración de CORS
