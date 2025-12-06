@@ -1,6 +1,6 @@
 ### Login User
 # @name loginUser
-POST http://localhost:3001/auth/login
+POST http://localhost:3000/auth/login
 Content-Type: application/json
 
 {
@@ -10,7 +10,7 @@ Content-Type: application/json
 
 ### Log Alert
 # @name logAlert
-POST http://localhost:3001/alerts/
+POST http://localhost:3000/alerts/
 Content-Type: application/json
 Authorization: Bearer {{loginUser.response.body.token}}
 
@@ -22,5 +22,25 @@ Authorization: Bearer {{loginUser.response.body.token}}
 }
 
 ### Get Alerts by Trip
-GET http://localhost:3001/alerts/trip/1
+GET http://localhost:3000/alerts/trip/1
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Control Device (Buzzer ON)
+POST http://localhost:3000/alerts/control/encender_buzzer
+Content-Type: application/json
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Control Device (Buzzer OFF)
+POST http://localhost:3000/alerts/control/apagar_buzzer
+Content-Type: application/json
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Control Device (LED ON)
+POST http://localhost:3000/alerts/control/encender_led
+Content-Type: application/json
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Control Device (LED OFF)
+POST http://localhost:3000/alerts/control/apagar_led
+Content-Type: application/json
 Authorization: Bearer {{loginUser.response.body.token}}
