@@ -29,7 +29,7 @@ client = mqtt.Client()
 if USERNAME and PASSWORD:
     client.username_pw_set(USERNAME, PASSWORD)
 
-if PORT == 8883:
+if PORT == 8883 or PORT == 8084: 
     client.tls_set(cert_reqs=ssl.CERT_NONE)
     client.tls_insecure_set(True)
 

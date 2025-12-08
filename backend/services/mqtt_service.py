@@ -20,8 +20,8 @@ class MQTTService:
         
         if self.username and self.password:
             self.client.username_pw_set(self.username, self.password)
-            
-        if self.port == 8883:
+
+        if self.port == 8883 or self.port == 8084:
             self.client.tls_set(cert_reqs=ssl.CERT_NONE)
             self.client.tls_insecure_set(True)
             
