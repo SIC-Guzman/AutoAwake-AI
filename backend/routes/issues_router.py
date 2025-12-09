@@ -4,6 +4,7 @@ from database.autoawake_db import (
     Database,
     open_issue,
     close_issue,
+    update_issue_status,
     list_issues
 )
 from schemas.crud_schemas import IssueOpen, IssueResponse
@@ -28,6 +29,27 @@ def create_issue(
             issue.description
         )
         return {"message": "Issue opened successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.post("/{issue_id}/status")
+def update_existing_issue_status(
+    issue_id: int,
+    new_status: str,
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db_instance)
+):
+    try:
+        if new_status not in ['IN_PROGRESS', 'CLOSED']:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid status. Must be IN_PROGRESS or CLOSED"
+            )
+        update_issue_status(db, issue_id, new_status)
+        return {"message": f"Issue status updated to {new_status} successfully"}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
