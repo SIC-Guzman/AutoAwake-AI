@@ -224,6 +224,42 @@ def deactivate_driver(db: Database, driver_id: int) -> None:
     db.execute(query, (driver_id,))
 
 
+def update_driver(
+    db: Database,
+    driver_id: int,
+    first_name: Optional[str] = None,
+    last_name: Optional[str] = None,
+    license_number: Optional[str] = None,
+    status: Optional[str] = None,
+) -> None:
+    """
+    Actualiza los campos del conductor especificado.
+    Solo actualiza los campos que no sean None.
+    """
+    fields = []
+    params = []
+    
+    if first_name is not None:
+        fields.append("first_name = %s")
+        params.append(first_name)
+    if last_name is not None:
+        fields.append("last_name = %s")
+        params.append(last_name)
+    if license_number is not None:
+        fields.append("license_number = %s")
+        params.append(license_number)
+    if status is not None:
+        fields.append("status = %s")
+        params.append(status)
+    
+    if not fields:
+        return  # No hay campos para actualizar
+    
+    params.append(driver_id)
+    query = f"UPDATE drivers SET {', '.join(fields)} WHERE driver_id = %s"
+    db.execute(query, tuple(params))
+
+
 # ---------------------------
 # VEHICLES
 # ---------------------------
@@ -362,6 +398,59 @@ def get_current_assignment_by_vehicle(
     return rows[0] if rows else None
 
 
+def list_assignments(
+    db: Database,
+    active_only: bool = False
+) -> List[Dict[str, Any]]:
+    """
+    Lista todas las asignaciones driver-vehicle con información detallada.
+    Si active_only=True, solo devuelve las asignaciones activas (assigned_to IS NULL).
+    """
+    if active_only:
+        query = """
+            SELECT 
+                dva.assignment_id,
+                dva.driver_id,
+                CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
+                d.license_number,
+                d.status AS driver_status,
+                dva.vehicle_id,
+                v.plate AS vehicle_plate,
+                v.brand,
+                v.model,
+                v.status AS vehicle_status,
+                dva.assigned_from,
+                dva.assigned_to
+            FROM driver_vehicle_assignments dva
+            JOIN drivers d ON d.driver_id = dva.driver_id
+            JOIN vehicles v ON v.vehicle_id = dva.vehicle_id
+            WHERE dva.assigned_to IS NULL
+            ORDER BY dva.assigned_from DESC
+        """
+    else:
+        query = """
+            SELECT 
+                dva.assignment_id,
+                dva.driver_id,
+                CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
+                d.license_number,
+                d.status AS driver_status,
+                dva.vehicle_id,
+                v.plate AS vehicle_plate,
+                v.brand,
+                v.model,
+                v.status AS vehicle_status,
+                dva.assigned_from,
+                dva.assigned_to
+            FROM driver_vehicle_assignments dva
+            JOIN drivers d ON d.driver_id = dva.driver_id
+            JOIN vehicles v ON v.vehicle_id = dva.vehicle_id
+            ORDER BY dva.assigned_from DESC
+        """
+    
+    return db.fetch_all(query)
+
+
 # ---------------------------
 # TRIPS (usando SPs)
 # ---------------------------
@@ -481,10 +570,15 @@ def list_alerts_by_trip(
     limit: int = 100,
 ) -> List[Dict[str, Any]]:
     query = """
-        SELECT *
-        FROM alerts
-        WHERE trip_id = %s
-        ORDER BY detected_at DESC
+        SELECT 
+            a.*,
+            CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
+            v.plate AS vehicle_plate
+        FROM alerts a
+        JOIN drivers d ON d.driver_id = a.driver_id
+        JOIN vehicles v ON v.vehicle_id = a.vehicle_id
+        WHERE a.trip_id = %s
+        ORDER BY a.detected_at DESC
         LIMIT %s
     """
     return db.fetch_all(query, (trip_id, limit))
@@ -496,10 +590,15 @@ def list_alerts_by_vehicle(
     limit: int = 100,
 ) -> List[Dict[str, Any]]:
     query = """
-        SELECT *
-        FROM alerts
-        WHERE vehicle_id = %s
-        ORDER BY detected_at DESC
+        SELECT 
+            a.*,
+            CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
+            v.plate AS vehicle_plate
+        FROM alerts a
+        JOIN drivers d ON d.driver_id = a.driver_id
+        JOIN vehicles v ON v.vehicle_id = a.vehicle_id
+        WHERE a.vehicle_id = %s
+        ORDER BY a.detected_at DESC
         LIMIT %s
     """
     return db.fetch_all(query, (vehicle_id, limit))
@@ -511,10 +610,15 @@ def list_alerts_by_driver(
     limit: int = 100,
 ) -> List[Dict[str, Any]]:
     query = """
-        SELECT *
-        FROM alerts
-        WHERE driver_id = %s
-        ORDER BY detected_at DESC
+        SELECT 
+            a.*,
+            CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
+            v.plate AS vehicle_plate
+        FROM alerts a
+        JOIN drivers d ON d.driver_id = a.driver_id
+        JOIN vehicles v ON v.vehicle_id = a.vehicle_id
+        WHERE a.driver_id = %s
+        ORDER BY a.detected_at DESC
         LIMIT %s
     """
     return db.fetch_all(query, (driver_id, limit))
@@ -546,6 +650,19 @@ def open_issue(
     db.call_procedure("sp_open_issue", args)
 
 
+def update_issue_status(
+    db: Database,
+    issue_id: int,
+    new_status: str,
+) -> None:
+    """Update issue status to IN_PROGRESS or CLOSED"""
+    query = "UPDATE issues SET status = %s WHERE issue_id = %s"
+    if new_status == 'CLOSED':
+        query = "UPDATE issues SET status = 'CLOSED', resolved_at = NOW() WHERE issue_id = %s"
+        db.execute(query, (issue_id,))
+    else:
+        db.execute(query, (new_status, issue_id,))
+
 def close_issue(
     db: Database,
     issue_id: int,
@@ -560,17 +677,47 @@ def list_issues(
 ) -> List[Dict[str, Any]]:
     if status:
         query = """
-            SELECT *
-            FROM issues
-            WHERE status = %s
-            ORDER BY reported_at DESC
+            SELECT 
+                i.issue_id,
+                i.vehicle_id,
+                i.driver_id,
+                i.trip_id,
+                i.issue_type,
+                i.description,
+                i.status,
+                i.reported_at,
+                i.resolved_at,
+                CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
+                v.plate AS vehicle_plate,
+                v.brand AS vehicle_brand,
+                v.model AS vehicle_model
+            FROM issues i
+            LEFT JOIN drivers d ON i.driver_id = d.driver_id
+            LEFT JOIN vehicles v ON i.vehicle_id = v.vehicle_id
+            WHERE i.status = %s
+            ORDER BY i.reported_at DESC
             LIMIT %s
         """
         return db.fetch_all(query, (status, limit))
     query = """
-        SELECT *
-        FROM issues
-        ORDER BY reported_at DESC
+        SELECT 
+            i.issue_id,
+            i.vehicle_id,
+            i.driver_id,
+            i.trip_id,
+            i.issue_type,
+            i.description,
+            i.status,
+            i.reported_at,
+            i.resolved_at,
+            CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
+            v.plate AS vehicle_plate,
+            v.brand AS vehicle_brand,
+            v.model AS vehicle_model
+        FROM issues i
+        LEFT JOIN drivers d ON i.driver_id = d.driver_id
+        LEFT JOIN vehicles v ON i.vehicle_id = v.vehicle_id
+        ORDER BY i.reported_at DESC
         LIMIT %s
     """
     return db.fetch_all(query, (limit,))

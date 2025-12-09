@@ -1,0 +1,32 @@
+.app {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.dashboard {
+  padding: 40px;
+  text-align: center;
+}
+
+.dashboard h1 {
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.dashboard button {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dashboard button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4);
+}
+

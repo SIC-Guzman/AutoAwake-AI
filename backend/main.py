@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from routes.auth_router import router as auth_router
 from routes.drivers_router import router as drivers_router
 from routes.vehicles_router import router as vehicles_router
+from routes.assignments_router import router as assignments_router
 from routes.trips_router import router as trips_router
 from routes.alerts_router import router as alerts_router
 from routes.issues_router import router as issues_router
@@ -39,10 +40,10 @@ app = FastAPI(
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("CORS_ORIGIN", "*")],
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["*"],
 )
 
 # Ruta para Swagger (equivalente a swagger-ui-express)
@@ -62,6 +63,7 @@ async def root():
 app.include_router(auth_router)
 app.include_router(drivers_router)
 app.include_router(vehicles_router)
+app.include_router(assignments_router)
 app.include_router(trips_router)
 app.include_router(alerts_router)
 app.include_router(issues_router)
