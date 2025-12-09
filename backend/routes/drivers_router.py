@@ -8,7 +8,6 @@ from database.autoawake_db import (
     deactivate_driver
 )
 from schemas.crud_schemas import DriverCreate, DriverResponse
-from utils.security import get_current_user
 from utils.db_instance import get_db_instance
 
 router = APIRouter(prefix="/drivers", tags=["Drivers"])
@@ -16,7 +15,6 @@ router = APIRouter(prefix="/drivers", tags=["Drivers"])
 @router.post("/", response_model=DriverResponse)
 def create_new_driver(
     driver: DriverCreate,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     try:
@@ -40,7 +38,6 @@ def create_new_driver(
 @router.get("/{driver_id}", response_model=DriverResponse)
 def get_driver(
     driver_id: int,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     driver = get_driver_by_id(db, driver_id)
@@ -54,7 +51,6 @@ def get_driver(
 @router.get("/", response_model=List[DriverResponse])
 def get_all_drivers(
     status: str = None,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     return list_drivers(db, status)
@@ -62,7 +58,6 @@ def get_all_drivers(
 @router.delete("/{driver_id}")
 def delete_driver(
     driver_id: int,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     driver = get_driver_by_id(db, driver_id)

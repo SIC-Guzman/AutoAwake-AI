@@ -9,7 +9,6 @@ from database.autoawake_db import (
     list_trips_by_vehicle
 )
 from schemas.crud_schemas import TripStart, TripEnd, TripResponse
-from utils.security import get_current_user
 from utils.db_instance import get_db_instance
 
 router = APIRouter(prefix="/trips", tags=["Trips"])
@@ -17,7 +16,6 @@ router = APIRouter(prefix="/trips", tags=["Trips"])
 @router.post("/", response_model=TripResponse)
 def start_new_trip(
     trip: TripStart,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     try:
@@ -41,7 +39,6 @@ def start_new_trip(
 def end_current_trip(
     trip_id: int,
     trip_end: TripEnd,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     try:
@@ -56,7 +53,6 @@ def end_current_trip(
 @router.get("/{trip_id}", response_model=TripResponse)
 def get_trip(
     trip_id: int,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     trip = get_trip_by_id(db, trip_id)
@@ -71,7 +67,6 @@ def get_trip(
 def get_trips_by_driver(
     driver_id: int,
     limit: int = 50,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     return list_trips_by_driver(db, driver_id, limit)
@@ -80,7 +75,6 @@ def get_trips_by_driver(
 def get_trips_by_vehicle(
     vehicle_id: int,
     limit: int = 50,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     return list_trips_by_vehicle(db, vehicle_id, limit)

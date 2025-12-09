@@ -89,7 +89,6 @@ class DeviceStatusUpdate(BaseModel):
 class DeviceResponse(BaseModel):
     device_id: int
     vehicle_id: int
-    device_type: str
     serial_number: str
     firmware_version: str
     status: str

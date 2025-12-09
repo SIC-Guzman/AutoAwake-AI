@@ -1,18 +1,7 @@
-### Login User
-# @name loginUser
-POST http://localhost:3001/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@autoawake.com",
-  "password": "securepassword"
-}
-
 ### Create Vehicle
 # @name createVehicle
-POST http://localhost:3001/vehicles/
+POST http://localhost:3000/vehicles/
 Content-Type: application/json
-Authorization: Bearer {{loginUser.response.body.token}}
 
 {
   "plate": "ABC-123",
@@ -22,17 +11,14 @@ Authorization: Bearer {{loginUser.response.body.token}}
 }
 
 ### Get All Vehicles
-GET http://localhost:3001/vehicles/
-Authorization: Bearer {{loginUser.response.body.token}}
+GET http://localhost:3000/vehicles/
 
 ### Get Vehicle by ID
-GET http://localhost:3001/vehicles/{{createVehicle.response.body.vehicle_id}}
-Authorization: Bearer {{loginUser.response.body.token}}
+GET http://localhost:3000/vehicles/{{createVehicle.response.body.vehicle_id}}
 
 ### Update Vehicle Status
-PUT http://localhost:3001/vehicles/{{createVehicle.response.body.vehicle_id}}/status
+PUT http://localhost:3000/vehicles/{{createVehicle.response.body.vehicle_id}}/status
 Content-Type: application/json
-Authorization: Bearer {{loginUser.response.body.token}}
 
 {
   "status": "MAINTENANCE"

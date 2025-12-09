@@ -7,7 +7,6 @@ from database.autoawake_db import (
     list_issues
 )
 from schemas.crud_schemas import IssueOpen, IssueResponse
-from utils.security import get_current_user
 from utils.db_instance import get_db_instance
 
 router = APIRouter(prefix="/issues", tags=["Issues"])
@@ -15,7 +14,6 @@ router = APIRouter(prefix="/issues", tags=["Issues"])
 @router.post("/")
 def create_issue(
     issue: IssueOpen,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     try:
@@ -37,7 +35,6 @@ def create_issue(
 @router.post("/{issue_id}/close")
 def close_existing_issue(
     issue_id: int,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     try:
@@ -53,7 +50,6 @@ def close_existing_issue(
 def get_all_issues(
     status: str = None,
     limit: int = 100,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     return list_issues(db, status, limit)

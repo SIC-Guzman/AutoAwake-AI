@@ -1,1 +1,0 @@
-from .auth_schema import LoginSchema, RegisterSchema

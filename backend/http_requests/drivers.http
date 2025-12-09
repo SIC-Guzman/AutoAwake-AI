@@ -1,18 +1,7 @@
-### Login User
-# @name loginUser
-POST http://localhost:3001/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@autoawake.com",
-  "password": "securepassword"
-}
-
 ### Create Driver
 # @name createDriver
-POST http://localhost:3001/drivers/
+POST http://localhost:3000/drivers/
 Content-Type: application/json
-Authorization: Bearer {{loginUser.response.body.token}}
 
 {
   "first_name": "Carlos",
@@ -22,13 +11,10 @@ Authorization: Bearer {{loginUser.response.body.token}}
 }
 
 ### Get All Drivers
-GET http://localhost:3001/drivers/
-Authorization: Bearer {{loginUser.response.body.token}}
+GET http://localhost:3000/drivers/
 
 ### Get Driver by ID
-GET http://localhost:3001/drivers/{{createDriver.response.body.driver_id}}
-Authorization: Bearer {{loginUser.response.body.token}}
+GET http://localhost:3000/drivers/{{createDriver.response.body.driver_id}}
 
 ### Deactivate Driver
-DELETE http://localhost:3001/drivers/{{createDriver.response.body.driver_id}}
-Authorization: Bearer {{loginUser.response.body.token}}
+DELETE http://localhost:3000/drivers/{{createDriver.response.body.driver_id}}

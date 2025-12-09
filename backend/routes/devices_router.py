@@ -7,7 +7,6 @@ from database.autoawake_db import (
     get_device_by_id
 )
 from schemas.crud_schemas import DeviceStatusUpdate, DeviceResponse
-from utils.security import get_current_user
 from utils.db_instance import get_db_instance
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
@@ -16,7 +15,6 @@ router = APIRouter(prefix="/devices", tags=["Devices"])
 def update_status(
     device_id: int,
     status_update: DeviceStatusUpdate,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     try:
@@ -36,7 +34,6 @@ def update_status(
 @router.get("/", response_model=List[DeviceResponse])
 def get_all_devices(
     status: str = None,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     return list_devices(db, status)

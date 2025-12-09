@@ -8,7 +8,6 @@ from database.autoawake_db import (
     update_vehicle_status
 )
 from schemas.crud_schemas import VehicleCreate, VehicleResponse, VehicleStatusUpdate
-from utils.security import get_current_user
 from utils.db_instance import get_db_instance
 
 router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
@@ -16,7 +15,6 @@ router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
 @router.post("/", response_model=VehicleResponse)
 def create_new_vehicle(
     vehicle: VehicleCreate,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     try:
@@ -40,7 +38,6 @@ def create_new_vehicle(
 @router.get("/{vehicle_id}", response_model=VehicleResponse)
 def get_vehicle(
     vehicle_id: int,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     vehicle = get_vehicle_by_id(db, vehicle_id)
@@ -54,7 +51,6 @@ def get_vehicle(
 @router.get("/", response_model=List[VehicleResponse])
 def get_all_vehicles(
     status: str = None,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     return list_vehicles(db, status)
@@ -63,7 +59,6 @@ def get_all_vehicles(
 def update_status(
     vehicle_id: int,
     status_update: VehicleStatusUpdate,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     vehicle = get_vehicle_by_id(db, vehicle_id)

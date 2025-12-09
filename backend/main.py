@@ -7,7 +7,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 
 # Import routers
-from routes.auth_router import router as auth_router
+# Import routers
 from routes.drivers_router import router as drivers_router
 from routes.vehicles_router import router as vehicles_router
 from routes.trips_router import router as trips_router
@@ -59,7 +59,6 @@ async def root():
     return JSONResponse(content={"message": "OK"}, status_code=200)
 
 # Registrar routers
-app.include_router(auth_router)
 app.include_router(drivers_router)
 app.include_router(vehicles_router)
 app.include_router(trips_router)

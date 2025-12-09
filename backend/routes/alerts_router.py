@@ -6,7 +6,6 @@ from database.autoawake_db import (
     list_alerts_by_trip
 )
 from schemas.crud_schemas import AlertLog, AlertResponse
-from utils.security import get_current_user
 from utils.db_instance import get_db_instance
 from services.mqtt_service import mqtt_service
 from pydantic import BaseModel
@@ -19,7 +18,6 @@ router = APIRouter(prefix="/alerts", tags=["Alerts"])
 @router.post("/")
 def create_alert(
     alert: AlertLog,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     try:
@@ -41,14 +39,12 @@ def create_alert(
 def get_alerts_by_trip(
     trip_id: int,
     limit: int = 100,
-    current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db_instance)
 ):
     return list_alerts_by_trip(db, trip_id, limit)
 
 @router.post("/control/apagar_buzzer")
 def control_apagar_buzzer(
-    current_user: dict = Depends(get_current_user)
 ):
     try:
         mqtt_service.publish_control("apagar_buzzer")
@@ -61,7 +57,6 @@ def control_apagar_buzzer(
 
 @router.post("/control/encender_buzzer")
 def control_encender_buzzer(
-    current_user: dict = Depends(get_current_user)
 ):
     try:
         mqtt_service.publish_control("encender_buzzer")
@@ -74,7 +69,6 @@ def control_encender_buzzer(
 
 @router.post("/control/apagar_led")
 def control_apagar_led(
-    current_user: dict = Depends(get_current_user)
 ):
     try:
         mqtt_service.publish_control("apagar_led")
@@ -87,7 +81,6 @@ def control_apagar_led(
 
 @router.post("/control/encender_led")
 def control_encender_led(
-    current_user: dict = Depends(get_current_user)
 ):
     try:
         mqtt_service.publish_control("encender_led")

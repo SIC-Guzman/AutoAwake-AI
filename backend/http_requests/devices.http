@@ -1,21 +1,9 @@
-### Login User
-# @name loginUser
-POST http://localhost:3001/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@autoawake.com",
-  "password": "securepassword"
-}
-
 ### Get All Devices
-GET http://localhost:3001/devices/
-Authorization: Bearer {{loginUser.response.body.token}}
+GET http://localhost:3000/devices/
 
 ### Update Device Status
-PUT http://localhost:3001/devices/1/status
+PUT http://localhost:3000/devices/1/status
 Content-Type: application/json
-Authorization: Bearer {{loginUser.response.body.token}}
 
 {
   "status": "ONLINE",

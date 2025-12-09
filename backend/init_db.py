@@ -4,16 +4,9 @@ import sys
 # Add backend directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from utils.sql_connection import engine, Base
-from models.user import User
-from models.role import Role
 from database.autoawake_db import Database
 
 def init_db():
-    print("Creating SQLAlchemy tables (users, roles)...")
-    Base.metadata.create_all(bind=engine)
-    print("SQLAlchemy tables created.")
-
     print("Running SQL scripts...")
     db = Database()
     conn = db._get_connection()
@@ -31,8 +24,12 @@ def init_db():
     for script_name in scripts:
         script_path = os.path.join(sql_dir, script_name)
         print(f"Executing {script_name}...")
-        with open(script_path, "r") as f:
-            lines = f.readlines()
+        try:
+            with open(script_path, "r") as f:
+                lines = f.readlines()
+        except FileNotFoundError:
+            print(f"Script {script_name} not found, skipping.")
+            continue
 
         statement = ""
         delimiter = ";"
@@ -73,16 +70,6 @@ def init_db():
     conn.commit()
     conn.close()
     print("SQL scripts executed.")
-
-    # Create default role if not exists
-    from sqlalchemy.orm import Session
-    session = Session(bind=engine)
-    if not session.query(Role).filter_by(id=1).first():
-        print("Creating default role...")
-        role = Role(id=1, description="Admin")
-        session.add(role)
-        session.commit()
-    session.close()
 
 if __name__ == "__main__":
     init_db()
