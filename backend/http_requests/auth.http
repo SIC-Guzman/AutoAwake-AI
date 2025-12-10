@@ -1,0 +1,21 @@
+### Register User
+# @name registerUser
+POST http://localhost:3001/auth/register
+Content-Type: application/json
+
+{
+  "name": "Admin User",
+  "email": "admin@autoawake.com",
+  "password": "securepassword",
+  "role_id": 1
+}
+
+### Login User
+# @name loginUser
+POST http://localhost:3001/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@autoawake.com",
+  "password": "securepassword"
+}
