@@ -75,19 +75,49 @@ export const dashboardService = {
   // Get alerts grouped by day
   getAlertsByDay: async (days = 7) => {
     try {
-      // Mock data structure for chart - would need alerts endpoint
+      // Pull alerts from backend and group by day/severity (no randomness)
+      const since = new Date();
+      since.setHours(0, 0, 0, 0);
+      since.setDate(since.getDate() - (days - 1));
+
+      const params = new URLSearchParams({
+        start_date: since.toISOString(),
+        limit: '1000', // cap to avoid huge payloads
+      });
+
+      const res = await fetch(`${API_URL}/alerts/?${params.toString()}`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+
+      if (!res.ok) {
+        return [];
+      }
+
+      const alerts = await res.json();
+      const map = new Map();
+
+      alerts.forEach((alert) => {
+        const key = new Date(alert.detected_at).toISOString().split('T')[0];
+        if (!map.has(key)) {
+          map.set(key, { date: key, count: 0, high_severity: 0, medium_severity: 0, low_severity: 0 });
+        }
+        const entry = map.get(key);
+        entry.count += 1;
+        if (alert.severity === 'HIGH' || alert.severity === 'CRITICAL') entry.high_severity += 1;
+        else if (alert.severity === 'MEDIUM') entry.medium_severity += 1;
+        else entry.low_severity += 1;
+      });
+
+      // Build ordered array for each day even if empty
       const data = [];
       for (let i = days - 1; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        data.push({
-          date: date.toISOString().split('T')[0],
-          count: Math.floor(Math.random() * 15), // Temporary mock data
-          high_severity: Math.floor(Math.random() * 5),
-          medium_severity: Math.floor(Math.random() * 7),
-          low_severity: Math.floor(Math.random() * 3)
-        });
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        data.push(map.get(key) || { date: key, count: 0, high_severity: 0, medium_severity: 0, low_severity: 0 });
       }
+
       return data;
     } catch (error) {
       console.error('Error in getAlertsByDay:', error);
