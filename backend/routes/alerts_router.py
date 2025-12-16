@@ -11,6 +11,7 @@ from schemas.crud_schemas import AlertLog, AlertResponse
 from utils.security import get_current_user
 from utils.db_instance import get_db_instance
 from services.mqtt_service import mqtt_service
+from services.telegram_service import telegram_service
 from pydantic import BaseModel
 
 class ControlCommand(BaseModel):
@@ -31,6 +32,13 @@ def create_alert(
             alert.alert_type,
             alert.severity,
             alert.message
+        )
+        telegram_service.send_alert(
+            db,
+            alert.alert_type,
+            alert.severity,
+            alert.message,
+            alert.trip_id,
         )
         return {"message": "Alert logged successfully"}
     except Exception as e:
@@ -82,27 +90,27 @@ def get_all_alerts(
     try:
         conditions = []
         params = []
-        
+
         if driver_id:
             conditions.append("a.driver_id = %s")
             params.append(driver_id)
-        
+
         if vehicle_id:
             conditions.append("a.vehicle_id = %s")
             params.append(vehicle_id)
-        
+
         if start_date:
             conditions.append("a.detected_at >= %s")
             params.append(start_date)
-        
+
         if end_date:
             conditions.append("a.detected_at <= %s")
             params.append(end_date)
-        
+
         where_clause = " AND ".join(conditions) if conditions else "1=1"
-        
+
         query = f"""
-            SELECT 
+            SELECT
                 a.*,
                 CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
                 v.plate AS vehicle_plate
@@ -114,7 +122,7 @@ def get_all_alerts(
             LIMIT %s
         """
         params.append(limit)
-        
+
         return db.fetch_all(query, tuple(params))
     except Exception as e:
         print(f"Error in get_all_alerts: {str(e)}")
