@@ -1,8 +1,0 @@
-.env
-.env.local
-.env.production
-.*
-!.env.example
-venv
-__pycache__/
-*.pyc

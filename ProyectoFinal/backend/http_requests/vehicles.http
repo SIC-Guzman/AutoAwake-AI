@@ -1,0 +1,39 @@
+### Login User
+# @name loginUser
+POST http://localhost:3001/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@autoawake.com",
+  "password": "securepassword"
+}
+
+### Create Vehicle
+# @name createVehicle
+POST http://localhost:3001/vehicles/
+Content-Type: application/json
+Authorization: Bearer {{loginUser.response.body.token}}
+
+{
+  "plate": "ABC-123",
+  "brand": "Ford",
+  "model": "Raptor",
+  "status": "ACTIVE"
+}
+
+### Get All Vehicles
+GET http://localhost:3001/vehicles/
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Get Vehicle by ID
+GET http://localhost:3001/vehicles/{{createVehicle.response.body.vehicle_id}}
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Update Vehicle Status
+PUT http://localhost:3001/vehicles/{{createVehicle.response.body.vehicle_id}}/status
+Content-Type: application/json
+Authorization: Bearer {{loginUser.response.body.token}}
+
+{
+  "status": "MAINTENANCE"
+}
