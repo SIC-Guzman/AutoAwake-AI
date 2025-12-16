@@ -18,7 +18,6 @@ from routes.devices_router import router as devices_router
 
 # Cargar variables de entorno
 
-
 from contextlib import asynccontextmanager
 from services.mqtt_service import mqtt_service
 

@@ -4,6 +4,7 @@ import threading
 import paho.mqtt.client as mqtt
 from database.autoawake_db import Database, log_alert
 from utils.db_instance import get_db_instance
+from services.telegram_service import telegram_service
 
 import ssl
 
@@ -62,8 +63,15 @@ class MQTTService:
             message = payload.get("message")
 
             if all([trip_id, alert_type, severity, message]):
-                 log_alert(self.db, trip_id, alert_type, severity, message)
-                 print(f"Alert logged: {message}")
+                log_alert(self.db, trip_id, alert_type, severity, message)
+                telegram_service.send_alert(
+                    self.db,
+                    alert_type,
+                    severity,
+                    message,
+                    trip_id,
+                )
+                print(f"Alert logged: {message}")
             else:
                 print("Incomplete alert data")
 

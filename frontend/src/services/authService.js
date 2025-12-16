@@ -1,4 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL;
+// Toggle temporal bypass for auth; set VITE_BYPASS_AUTH=false to restore real login
+const BYPASS_AUTH = import.meta.env.VITE_BYPASS_AUTH !== 'false';
 
 /**
  * Servicio de autenticación
@@ -67,6 +69,14 @@ const authService = {
    */
   login: async (email, password) => {
     try {
+      if (BYPASS_AUTH) {
+        const fakeToken = 'dev-token';
+        const fakeUser = { email, name: email?.split?.('@')?.[0] || email };
+        localStorage.setItem('token', fakeToken);
+        localStorage.setItem('user', JSON.stringify(fakeUser));
+        return { token: fakeToken, user: fakeUser, bypassed: true };
+      }
+
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -140,6 +150,12 @@ const authService = {
    * @returns {boolean}
    */
   isAuthenticated: () => {
+    if (BYPASS_AUTH) {
+      if (!localStorage.getItem('token')) {
+        localStorage.setItem('token', 'dev-token');
+      }
+      return true;
+    }
     return !!localStorage.getItem('token');
   },
 };
