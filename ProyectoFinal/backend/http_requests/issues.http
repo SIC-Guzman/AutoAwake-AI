@@ -1,0 +1,29 @@
+### Login User
+# @name loginUser
+POST http://localhost:3001/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@autoawake.com",
+  "password": "securepassword"
+}
+
+### Open Issue
+# @name openIssue
+POST http://localhost:3001/issues/
+Content-Type: application/json
+Authorization: Bearer {{loginUser.response.body.token}}
+
+{
+  "vehicle_id": 1,
+  "issue_type": "MECHANICAL",
+  "description": "Check engine light on"
+}
+
+### Get All Issues
+GET http://localhost:3001/issues/
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Close Issue
+POST http://localhost:3001/issues/1/close
+Authorization: Bearer {{loginUser.response.body.token}}

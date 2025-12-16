@@ -1,0 +1,23 @@
+### Login User
+# @name loginUser
+POST http://localhost:3001/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@autoawake.com",
+  "password": "securepassword"
+}
+
+### Get All Devices
+GET http://localhost:3001/devices/
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Update Device Status
+PUT http://localhost:3001/devices/1/status
+Content-Type: application/json
+Authorization: Bearer {{loginUser.response.body.token}}
+
+{
+  "status": "ONLINE",
+  "firmware_version": "v1.2.3"
+}

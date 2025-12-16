@@ -1,0 +1,34 @@
+### Login User
+# @name loginUser
+POST http://localhost:3001/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@autoawake.com",
+  "password": "securepassword"
+}
+
+### Create Driver
+# @name createDriver
+POST http://localhost:3001/drivers/
+Content-Type: application/json
+Authorization: Bearer {{loginUser.response.body.token}}
+
+{
+  "first_name": "Carlos",
+  "last_name": "Sainz",
+  "license_number": "LIC-55555",
+  "status": "ACTIVE"
+}
+
+### Get All Drivers
+GET http://localhost:3001/drivers/
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Get Driver by ID
+GET http://localhost:3001/drivers/{{createDriver.response.body.driver_id}}
+Authorization: Bearer {{loginUser.response.body.token}}
+
+### Deactivate Driver
+DELETE http://localhost:3001/drivers/{{createDriver.response.body.driver_id}}
+Authorization: Bearer {{loginUser.response.body.token}}
