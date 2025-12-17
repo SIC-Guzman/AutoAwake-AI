@@ -53,6 +53,7 @@ class MQTTService:
 
     def publicar_bpm(self, bpm):
         payload = {
+            "trip_id": 1,
             "timestamp": datetime.now().isoformat(),
             "bpm": bpm
         }
