@@ -3,6 +3,7 @@ import time
 from mqtt_service import mqtt_handler
 from ear_analyzer import EARAnalyzer
 from gaze_analyzer import GazeAnalyzer
+from gesture_analyzer import HandHelpGestureDetector
 
 
 # ================== CONFIG ==================
@@ -26,6 +27,12 @@ gaze_analyzer = GazeAnalyzer(
     deviation_threshold=0.15,
     history_length=5,
     looking_away_duration=2.0
+)
+
+hand_analyzer = HandHelpGestureDetector(
+    fist_threshold=0.35,
+    min_closed_fingers=4,
+    help_duration=1.5
 )
 
 last_time = time.time()
@@ -74,6 +81,19 @@ try:
                 message="Driver is drowsy"
             )
 
+        is_fist, closed_fingers, hand_alert = hand_analyzer.update(frame)
+
+        if is_fist:
+            print(f"Puño cerrado detectado ({closed_fingers} dedos cerrados)")
+
+        if hand_alert:
+            mqtt_handler.publish_alert(
+                trip_id=1,
+                alert_type="TRIP",
+                severity="LOW",
+                message="Trip initiated/ended by driver gesture"
+            )
+
 except KeyboardInterrupt:
     pass
 
@@ -81,3 +101,4 @@ finally:
     cap.release()
     ear_analyzer.close()
     gaze_analyzer.close()
+    hand_analyzer.close()
