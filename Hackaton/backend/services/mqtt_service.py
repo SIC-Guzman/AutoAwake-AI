@@ -1,24 +1,23 @@
 import json
-import os
 import threading
 import paho.mqtt.client as mqtt
+from core.config import settings
 from database.autoawake_db import Database, log_alert
-from utils.db_instance import get_db_instance
 from services.telegram_service import telegram_service
 
 import ssl
 
 class MQTTService:
     def __init__(self):
-        self.broker = os.getenv("MQTT_BROKER", "localhost")
-        self.port = int(os.getenv("MQTT_PORT", 1883))
-        self.username = os.getenv("MQTT_USER")
-        self.password = os.getenv("MQTT_PASSWORD")
-        self.topic_alerts = "autoawake/alerts"
-        self.topic_control = "autoawake/control"
-        
+        self.broker = settings.mqtt_broker
+        self.port = settings.mqtt_port
+        self.username = settings.mqtt_user
+        self.password = settings.mqtt_password
+        self.topic_alerts = settings.mqtt_topic_alerts
+        self.topic_control = settings.mqtt_topic_control
+
         self.client = mqtt.Client()
-        
+
         if self.username and self.password:
             self.client.username_pw_set(self.username, self.password)
             

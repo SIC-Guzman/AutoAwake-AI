@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
+from core.deps import get_current_user, get_db
 from database.autoawake_db import (
     Database,
     log_alert,
     list_alerts_by_trip,
     list_alerts_by_vehicle,
-    list_alerts_by_driver
+    list_alerts_by_driver,
 )
 from schemas.crud_schemas import AlertLog, AlertResponse
-from utils.security import get_current_user
-from utils.db_instance import get_db_instance
 from services.mqtt_service import mqtt_service
 from services.telegram_service import telegram_service
 from pydantic import BaseModel
@@ -23,7 +22,7 @@ router = APIRouter(prefix="/alerts", tags=["Alerts"])
 def create_alert(
     alert: AlertLog,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     try:
         log_alert(
@@ -52,7 +51,7 @@ def get_alerts_by_trip(
     trip_id: int,
     limit: int = 100,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     return list_alerts_by_trip(db, trip_id, limit)
 
@@ -61,7 +60,7 @@ def get_alerts_by_vehicle(
     vehicle_id: int,
     limit: int = 100,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     return list_alerts_by_vehicle(db, vehicle_id, limit)
 
@@ -70,7 +69,7 @@ def get_alerts_by_driver(
     driver_id: int,
     limit: int = 100,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     return list_alerts_by_driver(db, driver_id, limit)
 
@@ -82,7 +81,7 @@ def get_all_alerts(
     end_date: str = None,
     limit: int = 100,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     """
     Obtiene alertas con filtros opcionales.

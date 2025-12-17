@@ -1,15 +1,15 @@
-import os
 from typing import Any, Dict
 
 import requests
 
+from core.config import settings
 from database.autoawake_db import Database
 
 
 class TelegramService:
     def __init__(self) -> None:
-        self.bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-        self.chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        self.bot_token = settings.telegram_bot_token
+        self.chat_id = settings.telegram_chat_id
         self.base_url = (
             f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
             if self.bot_token

@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
+from core.deps import get_current_user, get_db
 from database.autoawake_db import (
     Database,
     start_trip,
     end_trip,
     get_trip_by_id,
     list_trips_by_driver,
-    list_trips_by_vehicle
+    list_trips_by_vehicle,
 )
 from schemas.crud_schemas import TripStart, TripEnd, TripResponse
-from utils.security import get_current_user
-from utils.db_instance import get_db_instance
 
 router = APIRouter(prefix="/trips", tags=["Trips"])
 
@@ -19,7 +18,7 @@ def list_all_trips(
     status: str = None,
     limit: int = 100,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     """
     Lista todos los viajes, opcionalmente filtrados por estado
@@ -60,7 +59,7 @@ def list_all_trips(
 def start_new_trip(
     trip: TripStart,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     try:
         trip_id = start_trip(
@@ -84,7 +83,7 @@ def end_current_trip(
     trip_id: int,
     trip_end: TripEnd,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     try:
         end_trip(db, trip_id, trip_end.status)
@@ -99,7 +98,7 @@ def end_current_trip(
 def get_trip(
     trip_id: int,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     trip = get_trip_by_id(db, trip_id)
     if not trip:
@@ -114,7 +113,7 @@ def get_trips_by_driver(
     driver_id: int,
     limit: int = 50,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     return list_trips_by_driver(db, driver_id, limit)
 
@@ -123,14 +122,14 @@ def get_trips_by_vehicle(
     vehicle_id: int,
     limit: int = 50,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     return list_trips_by_vehicle(db, vehicle_id, limit)
 
 @router.get("/stats/active")
 def get_active_trips_stats(
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     """
     Obtiene estadísticas de viajes activos con alertas de somnolencia

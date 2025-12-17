@@ -118,6 +118,60 @@ BEGIN
     END IF;
 END$$
 
+-- =========================================================
+-- Trigger 7:
+-- Normalizar email a minúsculas en users
+-- =========================================================
+CREATE TRIGGER trg_users_lower_email_before_insert
+BEFORE INSERT ON users
+FOR EACH ROW
+BEGIN
+    SET NEW.email = LOWER(NEW.email);
+END$$
+
+CREATE TRIGGER trg_users_lower_email_before_update
+BEFORE UPDATE ON users
+FOR EACH ROW
+BEGIN
+    SET NEW.email = LOWER(NEW.email);
+END$$
+
+-- =========================================================
+-- Trigger 8:
+-- Validar sesiones: solo usuarios activos y expiración por defecto
+-- =========================================================
+CREATE TRIGGER trg_user_sessions_validate_before_insert
+BEFORE INSERT ON user_sessions
+FOR EACH ROW
+BEGIN
+    DECLARE v_status ENUM('ACTIVE', 'DISABLED');
+
+    SELECT status
+    INTO v_status
+    FROM users
+    WHERE user_id = NEW.user_id
+    LIMIT 1;
+
+    IF v_status IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'User does not exist for session creation';
+    END IF;
+
+    IF v_status <> 'ACTIVE' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot create session for disabled user';
+    END IF;
+
+    IF NEW.expires_at IS NULL THEN
+        SET NEW.expires_at = DATE_ADD(NOW(), INTERVAL 12 HOUR);
+    END IF;
+
+    IF NEW.revoked_at IS NOT NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'revoked_at must be NULL on session creation';
+    END IF;
+END$$
+
 DELIMITER ;
 
 -- Fin de 02_triggers.sql

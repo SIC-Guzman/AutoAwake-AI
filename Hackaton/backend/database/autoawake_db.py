@@ -4,11 +4,14 @@ autoawake_db.py
 Capa de acceso a datos para la base de datos AutoAwakeAI (MySQL).
 
 Usa:
-- Tablas: drivers, vehicles, driver_vehicle_assignments, trips, alerts, issues, devices
+- Tablas: drivers, vehicles, driver_vehicle_assignments, trips,
+          alerts, issues, devices, roles, users, user_sessions
 - Vistas: v_active_trips, v_driver_current_assignment, v_vehicle_last_alert,
-          v_open_issues, v_trip_alerts_summary, v_vehicle_health
+          v_open_issues, v_trip_alerts_summary, v_vehicle_health,
+          v_users, v_active_sessions
 - SPs:   sp_start_trip, sp_end_trip, sp_log_alert,
-         sp_open_issue, sp_close_issue, sp_update_device_status
+         sp_open_issue, sp_close_issue, sp_update_device_status,
+         sp_register_user, sp_login_user, sp_logout_session
 """
 
 from __future__ import annotations
@@ -177,6 +180,85 @@ class Database:
 # =====================================================
 # 2. Funciones para entidades base
 # =====================================================
+
+# ---------------------------
+# USERS & AUTH
+# ---------------------------
+
+def register_user(
+    db: Database,
+    full_name: str,
+    email: str,
+    password_plain: str,
+    role_name: str = "DRIVER",
+) -> int:
+    """
+    Crea un usuario usando sp_register_user (hash+salt en BD).
+    """
+    args: List[Any] = [full_name, email, password_plain, role_name, 0]
+    result_args, _ = db.call_procedure("sp_register_user", args)
+    user_id = result_args[4]
+    return int(user_id)
+
+
+def login_user(
+    db: Database,
+    email: str,
+    password_plain: str,
+) -> Dict[str, Any]:
+    """
+    Ejecuta sp_login_user y devuelve user_id, role_name y session_token.
+    """
+    args: List[Any] = [email, password_plain, 0, "", ""]
+    result_args, _ = db.call_procedure("sp_login_user", args)
+    return {
+        "user_id": int(result_args[2]),
+        "role_name": result_args[3],
+        "session_token": result_args[4],
+    }
+
+
+def logout_session(db: Database, session_token: str) -> None:
+    db.call_procedure("sp_logout_session", [session_token])
+
+
+def get_user_by_email(db: Database, email: str) -> Optional[Dict[str, Any]]:
+    query = "SELECT * FROM users WHERE email = %s"
+    return db.fetch_one(query, (email.lower(),))
+
+
+def list_users(db: Database, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    if status:
+        query = "SELECT * FROM users WHERE status = %s ORDER BY created_at DESC"
+        return db.fetch_all(query, (status,))
+    query = "SELECT * FROM users ORDER BY created_at DESC"
+    return db.fetch_all(query)
+
+
+def get_active_session(db: Database, token: str) -> Optional[Dict[str, Any]]:
+    """
+    Recupera una sesión activa (no expirada ni revocada) y datos del usuario.
+    """
+    query = """
+        SELECT
+            s.session_id,
+            s.user_id,
+            s.token,
+            s.created_at,
+            s.expires_at,
+            u.full_name,
+            u.email,
+            u.status,
+            r.name AS role_name
+        FROM user_sessions s
+        JOIN users u ON u.user_id = s.user_id
+        JOIN roles r ON r.role_id = u.role_id
+        WHERE s.token = %s
+          AND s.revoked_at IS NULL
+          AND s.expires_at > NOW()
+        LIMIT 1
+    """
+    return db.fetch_one(query, (token,))
 
 # ---------------------------
 # DRIVERS
@@ -815,3 +897,22 @@ def get_vehicle_health(
         "WHERE vehicle_id = %s",
         (vehicle_id,),
     )
+
+
+def get_users_view(
+    db: Database,
+    status: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    v_users: listado de usuarios con rol.
+    """
+    if status:
+        return db.select_from_view("v_users", "WHERE status = %s", (status,))
+    return db.select_from_view("v_users")
+
+
+def list_active_sessions(db: Database) -> List[Dict[str, Any]]:
+    """
+    v_active_sessions: sesiones vigentes con datos de usuario/rol.
+    """
+    return db.select_from_view("v_active_sessions")

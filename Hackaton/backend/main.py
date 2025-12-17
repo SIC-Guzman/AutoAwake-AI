@@ -1,12 +1,14 @@
 from dotenv import load_dotenv
+
 load_dotenv()
-import os
+
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 
-# Import routers
+from core.config import settings
 from routes.auth_router import router as auth_router
 from routes.drivers_router import router as drivers_router
 from routes.vehicles_router import router as vehicles_router
@@ -15,10 +17,6 @@ from routes.trips_router import router as trips_router
 from routes.alerts_router import router as alerts_router
 from routes.issues_router import router as issues_router
 from routes.devices_router import router as devices_router
-
-# Cargar variables de entorno
-
-from contextlib import asynccontextmanager
 from services.mqtt_service import mqtt_service
 
 @asynccontextmanager
@@ -29,17 +27,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Backend API",
-    description="API con FastAPI y SQLAlchemy",
+    description="API con FastAPI y MySQL",
     version="1.0.0",
-    docs_url=None,   # Desactivamos la doc por defecto
-    redoc_url=None,  # Desactivamos Redoc (opcional)
-    lifespan=lifespan
+    docs_url=None,
+    redoc_url=None,
+    lifespan=lifespan,
 )
 
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "*"],
+    allow_origins=settings.cors_origins or ["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],

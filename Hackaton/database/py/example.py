@@ -1,6 +1,11 @@
 from autoawake_db import (
     DBConfig,
     Database,
+    get_user_by_email,
+    get_users_view,
+    list_active_sessions,
+    login_user,
+    register_user,
     create_driver,
     get_driver_by_license,
     create_vehicle,
@@ -20,6 +25,21 @@ def demo():
         password="super_secret",
         database="AutoAwakeAI",
     ))
+
+    # -------- USUARIOS / LOGIN --------
+    email = "admin@autoawake.ai"
+    password = "admin123"
+
+    existing_user = get_user_by_email(db, email)
+    if existing_user:
+        user_id = existing_user["user_id"]
+        print(f"Usuario ya existe con ID: {user_id}")
+    else:
+        user_id = register_user(db, "Admin AutoAwake", email, password, role_name="ADMIN")
+        print(f"Usuario creado con ID: {user_id}")
+
+    session_data = login_user(db, email, password)
+    print(f"Login OK. Token: {session_data['session_token']}, rol: {session_data['role_name']}")
 
     # -------- DRIVER --------
     license_number = "LIC-1000"
@@ -58,6 +78,8 @@ def demo():
     # -------- DASHBOARD --------
     print("Viajes activos:", get_active_trips(db))
     print("Salud de la flota:", get_vehicle_health(db))
+    print("Usuarios:", get_users_view(db))
+    print("Sesiones activas:", list_active_sessions(db))
 
 
 if __name__ == "__main__":
