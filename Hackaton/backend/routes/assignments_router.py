@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
+from core.deps import get_current_user, get_db
 from database.autoawake_db import (
     Database,
     create_assignment,
     close_assignment,
     list_assignments,
     get_current_assignment_by_driver,
-    get_current_assignment_by_vehicle
+    get_current_assignment_by_vehicle,
 )
 from schemas.crud_schemas import AssignmentCreate, AssignmentResponse
-from utils.security import get_current_user
-from utils.db_instance import get_db_instance
 
 router = APIRouter(prefix="/assignments", tags=["Assignments"])
 
@@ -18,7 +17,7 @@ router = APIRouter(prefix="/assignments", tags=["Assignments"])
 def create_new_assignment(
     assignment: AssignmentCreate,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     """
     Crea una nueva asignación de conductor-vehículo.
@@ -69,7 +68,7 @@ def create_new_assignment(
 def get_all_assignments(
     active_only: bool = False,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     """
     Obtiene todas las asignaciones con información detallada de conductores y vehículos.
@@ -81,7 +80,7 @@ def get_all_assignments(
 def get_driver_current_assignment(
     driver_id: int,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     """
     Obtiene la asignación activa de un conductor específico.
@@ -98,7 +97,7 @@ def get_driver_current_assignment(
 def get_vehicle_current_assignment(
     vehicle_id: int,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     """
     Obtiene la asignación activa de un vehículo específico.
@@ -115,7 +114,7 @@ def get_vehicle_current_assignment(
 def close_driver_assignment(
     assignment_id: int,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     """
     Cierra una asignación existente (marca assigned_to con NOW()).

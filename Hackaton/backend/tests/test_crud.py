@@ -40,7 +40,7 @@ def run_tests():
         "name": "Test User",
         "email": email,
         "password": password,
-        "role_id": 1
+        "role_name": "ADMIN"
     })
     print(f"Register: {status} {res}")
     

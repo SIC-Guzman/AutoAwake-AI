@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
+from core.deps import get_current_user, get_db
 from database.autoawake_db import (
     Database,
     open_issue,
     close_issue,
     update_issue_status,
-    list_issues
+    list_issues,
 )
 from schemas.crud_schemas import IssueOpen, IssueResponse
-from utils.security import get_current_user
-from utils.db_instance import get_db_instance
 
 router = APIRouter(prefix="/issues", tags=["Issues"])
 
@@ -17,7 +16,7 @@ router = APIRouter(prefix="/issues", tags=["Issues"])
 def create_issue(
     issue: IssueOpen,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     try:
         open_issue(
@@ -40,7 +39,7 @@ def update_existing_issue_status(
     issue_id: int,
     new_status: str,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     try:
         if new_status not in ['IN_PROGRESS', 'CLOSED']:
@@ -60,7 +59,7 @@ def update_existing_issue_status(
 def close_existing_issue(
     issue_id: int,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     try:
         close_issue(db, issue_id)
@@ -76,6 +75,6 @@ def get_all_issues(
     status: str = None,
     limit: int = 100,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     return list_issues(db, status, limit)

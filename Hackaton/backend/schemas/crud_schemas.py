@@ -77,12 +77,38 @@ class TripResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+# --- TRIP PLAN SCHEMAS ---
+class TripPlanCreate(BaseModel):
+    driver_id: int
+    vehicle_id: int
+    origin: str
+    destination: str
+
+
+class TripPlanResponse(TripPlanCreate):
+    plan_id: int
+    is_active: int
+    created_at: datetime
+    used_at: Optional[datetime] = None
+    driver_name: Optional[str] = None
+    license_number: Optional[str] = None
+    vehicle_plate: Optional[str] = None
+    brand: Optional[str] = None
+    model: Optional[str] = None
+
 # --- ALERT SCHEMAS ---
 class AlertLog(BaseModel):
-    trip_id: int
+    trip_id: Optional[int] = None
     alert_type: str
     severity: str
     message: str
+    driver_id: Optional[int] = None
+    vehicle_id: Optional[int] = None
+    driver_name: Optional[str] = None
+    vehicle_plate: Optional[str] = None
+    origin: Optional[str] = None
+    destination: Optional[str] = None
 
 class AlertResponse(BaseModel):
     alert_id: int

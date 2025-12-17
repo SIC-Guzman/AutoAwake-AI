@@ -55,6 +55,7 @@ El módulo contiene:
 
 2. Funciones por entidad para:
 
+   * roles y usuarios (login)
    * drivers
    * vehicles
    * driver_vehicle_assignments
@@ -66,6 +67,7 @@ El módulo contiene:
 3. Funciones auxiliares para vistas:
 
    * v_active_trips
+   * v_users / v_active_sessions
    * v_vehicle_last_alert
    * v_open_issues
    * v_trip_alerts_summary
@@ -76,6 +78,30 @@ Cada función corresponde directamente con las tablas y SPs definidos en la base
 ## 4. Uso por entidad
 
 A continuación se describen las operaciones soportadas para cada tipo de entidad.
+
+### 4.0 Usuarios / Login
+
+Funciones principales:
+
+```python
+register_user(db, full_name, email, password_plain, role_name)
+login_user(db, email, password_plain)
+logout_session(db, session_token)
+get_user_by_email(db, email)
+list_active_sessions(db)
+get_users_view(db, status)
+```
+
+Ejemplo:
+
+```python
+user = get_user_by_email(db, "admin@autoawake.ai")
+user_id = user["user_id"] if user else register_user(
+    db, "Admin AutoAwake", "admin@autoawake.ai", "admin123", "ADMIN"
+)
+session = login_user(db, "admin@autoawake.ai", "admin123")
+print(session["session_token"])
+```
 
 ### 4.1 Drivers
 

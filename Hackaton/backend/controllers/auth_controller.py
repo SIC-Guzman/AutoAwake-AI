@@ -1,11 +1,10 @@
-from fastapi import Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
+from database.autoawake_db import Database
 from services.auth_service import AuthService
-from utils.sql_connection import get_db
 
 
 class AuthController:
-    def __init__(self, db: Session):
+    def __init__(self, db: Database):
         self.auth_service = AuthService(db)
 
     def login(self, email: str, password: str):
@@ -20,13 +19,25 @@ class AuthController:
                 detail="Internal Server Error"
             )
 
-    def register(self, name: str, email: str, password: str, role_id: int):
+    def register(self, name: str, email: str, password: str, role_name: str):
         try:
-            return self.auth_service.register(name, email, password, role_id)
+            return self.auth_service.register(name, email, password, role_name)
         except HTTPException as e:
             raise e
         except Exception as e:
             print(f"Error in register: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal Server Error"
+            )
+
+    def logout(self, token: str):
+        try:
+            return self.auth_service.logout(token)
+        except HTTPException as e:
+            raise e
+        except Exception as e:
+            print(f"Error in logout: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Internal Server Error"

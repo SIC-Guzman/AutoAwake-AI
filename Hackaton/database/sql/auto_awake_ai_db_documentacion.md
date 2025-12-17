@@ -91,6 +91,35 @@ erDiagram
         datetime updated_at
     }
 
+    ROLES {
+        tinyint role_id PK
+        string name
+        string description
+        datetime created_at
+    }
+
+    USERS {
+        bigint user_id PK
+        string full_name
+        string email
+        string password_hash
+        string password_salt
+        tinyint role_id FK
+        string status
+        datetime last_login_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    USER_SESSIONS {
+        bigint session_id PK
+        bigint user_id FK
+        string token
+        datetime created_at
+        datetime expires_at
+        datetime revoked_at
+    }
+
     DRIVERS ||--o{ DRIVER_VEHICLE_ASSIGNMENTS : "tiene asignaciones"
     VEHICLES ||--o{ DRIVER_VEHICLE_ASSIGNMENTS : "asignado a"
 
@@ -106,6 +135,8 @@ erDiagram
     TRIPS ||--o{ ISSUES : "puede estar asociado"
 
     VEHICLES ||--o{ DEVICES : "monta dispositivo"
+    ROLES ||--o{ USERS : "define rol"
+    USERS ||--o{ USER_SESSIONS : "tiene sesiones"
 ```
 
 ---
@@ -121,6 +152,9 @@ erDiagram
 | `alerts`                     | Alertas emitidas por AutoAwake AI (somnolencia, distracción…). |
 | `issues`                     | Incidencias/Problemas reportados (seguridad, mecánica, etc.).  |
 | `devices`                    | Dispositivos físicos (Raspberry/IoT) instalados en vehículos.  |
+| `roles`                      | Catálogo de roles/permisos para usuarios de la plataforma.     |
+| `users`                      | Usuarios de la plataforma (credenciales y rol).                |
+| `user_sessions`              | Tokens de sesión y expiración para login.                       |
 
 ### 2.1 Relaciones principales
 
@@ -137,6 +171,8 @@ erDiagram
 | `drivers` → `issues`                      | 1 a N (opcional)         | Un driver puede estar asociado a múltiples incidencias.         |
 | `trips` → `issues`                        | 1 a N (opcional)         | Un viaje puede tener múltiples incidencias.                     |
 | `vehicles` → `devices`                    | 1 a 1 (lógica de diseño) | Cada vehículo tiene un dispositivo principal (único) instalado. |
+| `roles` → `users`                         | 1 a N                    | Un rol puede ser usado por muchos usuarios.                     |
+| `users` → `user_sessions`                 | 1 a N                    | Un usuario puede tener múltiples sesiones activas.              |
 
 ---
 
@@ -260,6 +296,56 @@ erDiagram
 
 * Monitoreo de conectividad de los dispositivos.
 * Relación con métricas de salud del sistema.
+
+---
+
+### 3.8 `roles`
+
+* **Función:** catálogo simple de roles (ADMIN, MANAGER, DRIVER).
+* Campos clave:
+
+  * `role_id` (PK)
+  * `name` (único)
+
+**Uso típico:**
+
+* Referenciado por `users` para delimitar permisos de plataforma.
+
+---
+
+### 3.9 `users`
+
+* **Función:** credenciales y metadata de los usuarios de la plataforma.
+* Campos clave:
+
+  * `user_id` (PK)
+  * `email` (único, normalizado en triggers)
+  * `password_hash`, `password_salt` (hash SHA-256 con salt UUID)
+  * `role_id` (FK → `roles`)
+  * `status` (`ACTIVE`, `DISABLED`)
+  * `last_login_at`
+
+**Uso típico:**
+
+* Registro y autenticación.
+* Auditoría de accesos (`last_login_at`).
+
+---
+
+### 3.10 `user_sessions`
+
+* **Función:** almacenar tokens de sesión emitidos en el login.
+* Campos clave:
+
+  * `session_id` (PK)
+  * `user_id` (FK → `users`)
+  * `token` (UUID)
+  * `expires_at` (se autocompleta a 12h en triggers si viene NULL)
+  * `revoked_at` (para logout)
+
+**Uso típico:**
+
+* Validar sesiones activas (`expires_at > NOW()` y `revoked_at IS NULL`).
 
 ---
 
@@ -392,6 +478,38 @@ Los triggers se usan para reforzar reglas de negocio y mantener coherencia autom
 
 ---
 
+### 4.7 `trg_users_lower_email_before_insert` / `before_update`
+
+**Tabla:** `users`
+**Momento:** `BEFORE INSERT` y `BEFORE UPDATE`
+
+**Objetivo:**
+
+* Normalizar correos a minúsculas para evitar duplicados por casing.
+
+**Beneficio:**
+
+* La unicidad de `email` se mantiene consistente sin depender del backend.
+
+---
+
+### 4.8 `trg_user_sessions_validate_before_insert`
+
+**Tabla:** `user_sessions`
+**Momento:** `BEFORE INSERT`
+
+**Objetivo:**
+
+* Validar que el usuario exista y esté `ACTIVE` antes de crear sesión.
+* Autocompletar `expires_at` (12h) si viene NULL.
+* Bloquear creación con `revoked_at` no NULL.
+
+**Beneficio:**
+
+* Previene sesiones inválidas y centraliza la expiración por defecto.
+
+---
+
 ## 5. Vistas (`VIEWs`)
 
 Las vistas encapsulan consultas comunes para simplificar el acceso desde el backend o herramientas de reporting.
@@ -482,6 +600,34 @@ Las vistas encapsulan consultas comunes para simplificar el acceso desde el back
 **Uso típico:**
 
 * Dashboard de flota: ver rápido qué vehículos tienen problemas o alertas recientes.
+
+---
+
+### 5.7 `v_users`
+
+**Objetivo:**
+
+* Listar usuarios con su rol y últimos accesos.
+
+**Columnas clave:**
+
+* `user_id`, `full_name`, `email`, `role_name`, `status`, `last_login_at`, `created_at`.
+
+**Uso típico:**
+
+* Panel de administración de usuarios y auditoría de accesos.
+
+---
+
+### 5.8 `v_active_sessions`
+
+**Objetivo:**
+
+* Mostrar sesiones vigentes (token no revocado y no expirado) junto con datos de usuario.
+
+**Uso típico:**
+
+* Monitorear sesiones activas o depurar problemas de autenticación.
 
 ---
 
@@ -628,10 +774,50 @@ sp_update_device_status(
 
 ---
 
+### 6.7 `sp_register_user`
+
+**Función:**
+
+* Crea un usuario aplicando hash SHA-256 con salt generado en la BD y validando el rol solicitado.
+* Evita correos duplicados (`EMAIL_ALREADY_EXISTS`).
+
+**Uso típico:**
+
+* Registro de cuentas desde backend con mínima lógica de seguridad en el cliente.
+
+---
+
+### 6.8 `sp_login_user`
+
+**Función:**
+
+* Verifica credenciales (`INVALID_CREDENTIALS`) y estado (`USER_DISABLED`).
+* Actualiza `last_login_at`.
+* Genera un token UUID en `user_sessions` y devuelve `user_id`, `role_name`, `session_token`.
+
+**Uso típico:**
+
+* Inicio de sesión; el backend recibe token listo para emitir JWT/headers.
+
+---
+
+### 6.9 `sp_logout_session`
+
+**Función:**
+
+* Revoca una sesión (marca `revoked_at = NOW()`) según token.
+
+**Uso típico:**
+
+* Cerrar sesión o invalidar tokens comprometidos.
+
+---
+
 ## 7. Datos de prueba (`sample data`)
 
 Se incluyó un script `05_sample_data.sql` con:
 
+* 2 usuarios demo (admin y manager) con contraseñas hasheadas
 * 3 drivers
 * 3 vehicles
 * 2 asignaciones activas
@@ -647,6 +833,11 @@ Se incluyó un script `05_sample_data.sql` con:
 ---
 
 ## 8. Flujo típico de uso (backend)
+
+0. **Autenticación**
+
+   * Registrar usuario con `sp_register_user` (o seed de ejemplo).
+   * Iniciar sesión con `sp_login_user` y guardar `session_token`.
 
 1. **Config inicial**
 

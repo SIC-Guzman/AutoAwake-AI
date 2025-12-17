@@ -4,11 +4,14 @@ autoawake_db.py
 Capa de acceso a datos para la base de datos AutoAwakeAI (MySQL).
 
 Usa:
-- Tablas: drivers, vehicles, driver_vehicle_assignments, trips, alerts, issues, devices
+- Tablas: drivers, vehicles, driver_vehicle_assignments, trips,
+          alerts, issues, devices, roles, users, user_sessions
 - Vistas: v_active_trips, v_driver_current_assignment, v_vehicle_last_alert,
-          v_open_issues, v_trip_alerts_summary, v_vehicle_health
+          v_open_issues, v_trip_alerts_summary, v_vehicle_health,
+          v_users, v_active_sessions
 - SPs:   sp_start_trip, sp_end_trip, sp_log_alert,
-         sp_open_issue, sp_close_issue, sp_update_device_status
+         sp_open_issue, sp_close_issue, sp_update_device_status,
+         sp_register_user, sp_login_user, sp_logout_session
 """
 
 from __future__ import annotations
@@ -152,12 +155,35 @@ class Database:
         try:
             with conn.cursor(dictionary=True) as cursor:
                 proc_args = args or []
-                result = cursor.callproc(name, proc_args)
+                proc_result = cursor.callproc(name, proc_args)
+                result_list = list(proc_result)
+                # Algunas versiones del conector devuelven placeholders como
+                # 'sp_login_user_arg3' en vez del valor del OUT param. Los
+                # recuperamos con un SELECT a las variables de sesión.
+                placeholders: List[Tuple[int, str]] = []
+                for idx, val in enumerate(result_list):
+                    if not isinstance(val, str):
+                        continue
+                    if val.startswith(f"{name}_arg"):
+                        placeholders.append((idx, val))
+                    elif val.startswith(f"@_{name}_"):
+                        # Algunos conectores devuelven el prefijo '@_' incluido
+                        placeholders.append((idx, val[2:]))
+
+                if placeholders:
+                    select_expr = ", ".join(
+                        f"@_{ph} AS `{ph}`" for _, ph in placeholders
+                    )
+                    cursor.execute(f"SELECT {select_expr}")
+                    row = cursor.fetchone()
+                    for idx, ph in placeholders:
+                        result_list[idx] = row[ph]
+
                 result_sets: List[List[Dict[str, Any]]] = []
                 for rs in cursor.stored_results():
                     result_sets.append(rs.fetchall())
                 conn.commit()
-                return list(result), result_sets
+                return result_list, result_sets
         finally:
             conn.close()
 
@@ -177,6 +203,85 @@ class Database:
 # =====================================================
 # 2. Funciones para entidades base
 # =====================================================
+
+# ---------------------------
+# USERS & AUTH
+# ---------------------------
+
+def register_user(
+    db: Database,
+    full_name: str,
+    email: str,
+    password_plain: str,
+    role_name: str = "DRIVER",
+) -> int:
+    """
+    Crea un usuario usando sp_register_user (hash+salt en BD).
+    """
+    args: List[Any] = [full_name, email, password_plain, role_name, 0]
+    result_args, _ = db.call_procedure("sp_register_user", args)
+    user_id = result_args[4]
+    return int(user_id)
+
+
+def login_user(
+    db: Database,
+    email: str,
+    password_plain: str,
+) -> Dict[str, Any]:
+    """
+    Ejecuta sp_login_user y devuelve user_id, role_name y session_token.
+    """
+    args: List[Any] = [email, password_plain, 0, "", ""]
+    result_args, _ = db.call_procedure("sp_login_user", args)
+    return {
+        "user_id": int(result_args[2]),
+        "role_name": result_args[3],
+        "session_token": result_args[4],
+    }
+
+
+def logout_session(db: Database, session_token: str) -> None:
+    db.call_procedure("sp_logout_session", [session_token])
+
+
+def get_user_by_email(db: Database, email: str) -> Optional[Dict[str, Any]]:
+    query = "SELECT * FROM users WHERE email = %s"
+    return db.fetch_one(query, (email.lower(),))
+
+
+def list_users(db: Database, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    if status:
+        query = "SELECT * FROM users WHERE status = %s ORDER BY created_at DESC"
+        return db.fetch_all(query, (status,))
+    query = "SELECT * FROM users ORDER BY created_at DESC"
+    return db.fetch_all(query)
+
+
+def get_active_session(db: Database, token: str) -> Optional[Dict[str, Any]]:
+    """
+    Recupera una sesión activa (no expirada ni revocada) y datos del usuario.
+    """
+    query = """
+        SELECT
+            s.session_id,
+            s.user_id,
+            s.token,
+            s.created_at,
+            s.expires_at,
+            u.full_name,
+            u.email,
+            u.status,
+            r.name AS role_name
+        FROM user_sessions s
+        JOIN users u ON u.user_id = s.user_id
+        JOIN roles r ON r.role_id = u.role_id
+        WHERE s.token = %s
+          AND s.revoked_at IS NULL
+          AND s.expires_at > NOW()
+        LIMIT 1
+    """
+    return db.fetch_one(query, (token,))
 
 # ---------------------------
 # DRIVERS
@@ -452,7 +557,7 @@ def list_assignments(
 
 
 # ---------------------------
-# TRIPS (usando SPs)
+# TRIPS (usando SPs) y planes
 # ---------------------------
 
 def start_trip(
@@ -496,6 +601,24 @@ def start_trip(
     return int(row["trip_id"])
 
 
+def get_active_trip_by_pair(
+    db: Database,
+    driver_id: int,
+    vehicle_id: int,
+) -> Optional[Dict[str, Any]]:
+    """
+    Devuelve el viaje activo (IN_PROGRESS) para un driver/vehículo, si existe.
+    """
+    query = """
+        SELECT * FROM trips
+        WHERE driver_id = %s
+          AND vehicle_id = %s
+          AND status = 'IN_PROGRESS'
+        ORDER BY started_at DESC
+        LIMIT 1
+    """
+    return db.fetch_one(query, (driver_id, vehicle_id))
+
 
 def end_trip(
     db: Database,
@@ -514,6 +637,100 @@ def get_trip_by_id(db: Database, trip_id: int) -> Optional[Dict[str, Any]]:
     query = "SELECT * FROM trips WHERE trip_id = %s"
     return db.fetch_one(query, (trip_id,))
 
+
+def get_driver_by_full_name(
+    db: Database,
+    full_name: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Busca exacto por CONCAT(first_name, ' ', last_name).
+    """
+    query = """
+        SELECT * FROM drivers
+        WHERE CONCAT(first_name, ' ', last_name) = %s
+        LIMIT 1
+    """
+    return db.fetch_one(query, (full_name,))
+
+
+def get_vehicle_by_plate(
+    db: Database,
+    plate: str,
+) -> Optional[Dict[str, Any]]:
+    query = "SELECT * FROM vehicles WHERE plate = %s LIMIT 1"
+    return db.fetch_one(query, (plate,))
+
+# ---------------------------
+# TRIP PLANS (pendientes de iniciar)
+# ---------------------------
+
+def create_trip_plan(
+    db: Database,
+    driver_id: int,
+    vehicle_id: int,
+    origin: str,
+    destination: str,
+) -> int:
+    query = """
+        INSERT INTO trip_plans (driver_id, vehicle_id, origin, destination)
+        VALUES (%s, %s, %s, %s)
+    """
+    return db.execute(query, (driver_id, vehicle_id, origin, destination), return_lastrowid=True) or 0
+
+
+def list_trip_plans(db: Database, active_only: bool = False) -> List[Dict[str, Any]]:
+    where_clause = "WHERE tp.is_active = 1" if active_only else ""
+    query = f"""
+        SELECT
+            tp.*,
+            CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
+            d.license_number,
+            v.plate AS vehicle_plate,
+            v.brand,
+            v.model
+        FROM trip_plans tp
+        JOIN drivers d ON d.driver_id = tp.driver_id
+        JOIN vehicles v ON v.vehicle_id = tp.vehicle_id
+        {where_clause}
+        ORDER BY tp.created_at DESC
+    """
+    return db.fetch_all(query)
+
+
+def consume_trip_plan(
+    db: Database,
+    driver_id: int,
+    vehicle_id: int,
+) -> Optional[Dict[str, Any]]:
+    """
+    Recupera el plan activo más reciente para el driver/vehículo y lo marca como usado.
+    """
+    conn = db._get_connection()
+    try:
+        with conn.cursor(dictionary=True) as cursor:
+            cursor.execute(
+                """
+                SELECT *
+                FROM trip_plans
+                WHERE driver_id = %s
+                  AND vehicle_id = %s
+                  AND is_active = 1
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (driver_id, vehicle_id),
+            )
+            plan = cursor.fetchone()
+            if not plan:
+                return None
+            cursor.execute(
+                "UPDATE trip_plans SET is_active = 0, used_at = NOW() WHERE plan_id = %s",
+                (plan["plan_id"],),
+            )
+            conn.commit()
+            return plan
+    finally:
+        conn.close()
 
 def list_trips_by_driver(
     db: Database,
@@ -815,3 +1032,22 @@ def get_vehicle_health(
         "WHERE vehicle_id = %s",
         (vehicle_id,),
     )
+
+
+def get_users_view(
+    db: Database,
+    status: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    v_users: listado de usuarios con rol.
+    """
+    if status:
+        return db.select_from_view("v_users", "WHERE status = %s", (status,))
+    return db.select_from_view("v_users")
+
+
+def list_active_sessions(db: Database) -> List[Dict[str, Any]]:
+    """
+    v_active_sessions: sesiones vigentes con datos de usuario/rol.
+    """
+    return db.select_from_view("v_active_sessions")

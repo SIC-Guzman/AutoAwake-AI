@@ -3,11 +3,29 @@
 Base URL: `http://localhost:3001`
 
 All endpoints (except Auth) require a Bearer Token in the `Authorization` header.
-`Authorization: Bearer <token>`
+`Authorization: Bearer <token>` (token UUID emitido por `sp_login_user`, validado contra `v_active_sessions`)
+
+## Arquitectura
+- FastAPI con routers por dominio → controllers → services → capa de datos (`database/autoawake_db.py` con stored procedures/vistas).
+- `core/config.py` centraliza configuración (DB/MQTT/Telegram/CORS) y `core/deps.py` expone dependencias (`get_db`, `get_current_user`, `require_roles`).
+- Autenticación via `sp_register_user` / `sp_login_user` y `user_sessions` (sin JWT). Los tokens se validan contra `v_active_sessions`.
+- MQTT (`services/mqtt_service.py`) consume alertas y las persiste + Telegram (`services/telegram_service.py`).
+- Acceso a datos directo con `mysql-connector` (sin ORM) usando stored procedures, triggers y vistas definidos en `/database/sql`.
+
+## Estructura rápida
+- `core/`: configuración y dependencias compartidas.
+- `routes/`: endpoints por dominio (drivers, vehicles, trips, alerts, issues, devices, auth).
+- `controllers/`: orquestación de servicios (auth).
+- `services/`: lógica de negocio y adaptadores externos (auth, mqtt, telegram).
+- `database/`: capa de acceso a datos basada en stored procedures/vistas.
+- `schemas/`: validación y serialización (Pydantic).
+- `tests/`: scripts de prueba de API y simulación MQTT.
 
 ## Authentication
 
 ### Register
+
+Usa los stored procedures `sp_register_user` y `sp_login_user` (token de sesión persistido en `user_sessions`).
 
 - **URL**: `/auth/register`
 - **Method**: `POST`
@@ -17,13 +35,16 @@ All endpoints (except Auth) require a Bearer Token in the `Authorization` header
     "name": "string",
     "email": "string",
     "password": "string",
-    "role_id": "int"
+    "role_name": "ADMIN | MANAGER | DRIVER"
   }
   ```
 - **Response**:
   ```json
   {
-    "token": "string"
+    "token": "string",
+    "user_id": 1,
+    "role": "ADMIN",
+    "expires_at": "datetime"
   }
   ```
 
@@ -41,8 +62,21 @@ All endpoints (except Auth) require a Bearer Token in the `Authorization` header
 - **Response**:
   ```json
   {
-    "token": "string"
+    "token": "string",
+    "user_id": 1,
+    "role": "ADMIN",
+    "expires_at": "datetime"
   }
+  ```
+
+### Logout
+
+- **URL**: `/auth/logout`
+- **Method**: `POST`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
+  ```json
+  { "message": "Session revoked" }
   ```
 
 ## Drivers

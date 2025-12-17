@@ -206,4 +206,69 @@ CREATE TABLE IF NOT EXISTS devices (
         ON DELETE RESTRICT
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
+-- =========================================================
+-- 8. Tabla: roles (perfiles de acceso a la plataforma)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS roles (
+    role_id     TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name        VARCHAR(50)      NOT NULL,
+    description VARCHAR(255)     NULL,
+    created_at  TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (role_id),
+    UNIQUE KEY ux_roles_name (name)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+-- Carga mínima de roles base
+INSERT INTO roles (role_id, name, description) VALUES
+(1, 'ADMIN',   'Administrator with full access'),
+(2, 'MANAGER', 'Fleet manager with monitoring access'),
+(3, 'DRIVER',  'Driver with limited access')
+ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
+
+-- =========================================================
+-- 9. Tabla: users (usuarios de la plataforma)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS users (
+    user_id       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    full_name     VARCHAR(120)    NOT NULL,
+    email         VARCHAR(150)    NOT NULL,
+    password_hash CHAR(64)        NOT NULL,
+    password_salt CHAR(36)        NOT NULL,
+    role_id       TINYINT UNSIGNED NOT NULL,
+    status        ENUM('ACTIVE', 'DISABLED') NOT NULL DEFAULT 'ACTIVE',
+    last_login_at DATETIME        NULL,
+    created_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                             ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id),
+    UNIQUE KEY ux_users_email (email),
+    KEY idx_users_role_status (role_id, status),
+    CONSTRAINT fk_users_role
+        FOREIGN KEY (role_id)
+        REFERENCES roles (role_id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+-- =========================================================
+-- 10. Tabla: user_sessions (sesiones para login)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS user_sessions (
+    session_id  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id     BIGINT UNSIGNED NOT NULL,
+    token       CHAR(36)        NOT NULL,
+    created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at  DATETIME        NOT NULL,
+    revoked_at  DATETIME        NULL,
+    PRIMARY KEY (session_id),
+    UNIQUE KEY ux_user_sessions_token (token),
+    KEY idx_user_sessions_user (user_id),
+    KEY idx_user_sessions_exp (expires_at),
+    CONSTRAINT fk_user_sessions_user
+        FOREIGN KEY (user_id)
+        REFERENCES users (user_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
 -- Fin de 01_schema.sql

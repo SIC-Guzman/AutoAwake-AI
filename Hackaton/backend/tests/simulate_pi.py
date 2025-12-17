@@ -1,21 +1,22 @@
-import paho.mqtt.client as mqtt
 import json
 import time
 import threading
-
 import ssl
-import os
+
+import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
+
+from core.config import settings
 
 load_dotenv()
 
 # Configuration
-BROKER = os.getenv("MQTT_BROKER", "")
-PORT = int(os.getenv("MQTT_PORT", 8883))
-USERNAME = os.getenv("MQTT_USER", "")
-PASSWORD = os.getenv("MQTT_PASSWORD", "")
-TOPIC_ALERTS = "autoawake/alerts"
-TOPIC_CONTROL = "autoawake/control"
+BROKER = settings.mqtt_broker
+PORT = settings.mqtt_port
+USERNAME = settings.mqtt_user or ""
+PASSWORD = settings.mqtt_password or ""
+TOPIC_ALERTS = settings.mqtt_topic_alerts
+TOPIC_CONTROL = settings.mqtt_topic_control
 
 def on_connect(client, userdata, flags, rc):
     print(f"Connected to MQTT Broker with result code {rc}")
