@@ -78,7 +78,7 @@ export const AdminTripPlanPage = () => {
           <input
             value={origin}
             onChange={(e) => setOrigin(e.target.value)}
-            placeholder="CDMX Patio Central"
+            placeholder="Patio Central"
             className="rounded-xl border border-white/10 bg-[#0a1224] px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-500/30"
             required
           />

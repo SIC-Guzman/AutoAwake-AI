@@ -92,7 +92,7 @@ export const HomePage = () => {
                   Panel de alertas
                 </p>
                 <p className="text-lg font-semibold text-white">
-                  Turno nocturno · Flota CDMX
+                  Turno nocturno · Flota GT
                 </p>
               </div>
               <div className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-200">
@@ -107,7 +107,7 @@ export const HomePage = () => {
                 </div>
                 <p className="mt-2 text-sm text-slate-100">
                   Piloto <strong className="text-white">D-142</strong> en
-                  vehículo <strong className="text-white">MX-09</strong>. Se
+                  vehículo <strong className="text-white">GT-09</strong>. Se
                   activó buzzer y luz de emergencia.
                 </p>
               </div>
@@ -192,35 +192,6 @@ export const HomePage = () => {
                 <p className="text-sm text-slate-200">{step}</p>
               </div>
             ))}
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-cyan-200/20 bg-gradient-to-br from-cyan-500/20 via-sky-500/10 to-transparent p-8 shadow-2xl shadow-cyan-500/30">
-          <p className="text-xs uppercase tracking-[0.2em] text-white">
-            Enfocado en admins
-          </p>
-          <h3 className="mt-2 text-2xl font-bold text-white">
-            Acceso seguro para Samsung Hackathon
-          </h3>
-          <p className="mt-3 text-sm text-slate-100">
-            Gestiona sesiones con tokens JWT entregados por el backend FastAPI.
-            El cliente Axios añade el bearer token automáticamente a cada
-            llamada y TanStack Query maneja reintentos controlados para una
-            experiencia estable en vivo.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/90 px-5 py-3 text-sm font-semibold text-[#041022] shadow-lg shadow-white/20 transition hover:-translate-y-[1px]"
-            >
-              Iniciar sesión
-            </Link>
-            <Link
-              to="/about"
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/40"
-            >
-              Saber más
-            </Link>
           </div>
         </div>
       </section>

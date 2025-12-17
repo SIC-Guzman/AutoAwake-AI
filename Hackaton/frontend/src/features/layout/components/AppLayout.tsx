@@ -1,7 +1,8 @@
-import { PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/auth-context";
 import { AdminNav } from "../../admin/components/AdminNav";
+import logo from "../../../assets/logo.png";
 
 const baseLinks = [
   { to: "/", label: "Inicio" },
@@ -26,9 +27,11 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       <header className="sticky top-0 z-30 border-b border-white/5 bg-[#050b18]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400/80 to-sky-500/70 shadow-lg shadow-cyan-500/30">
-              <span className="text-xl font-extrabold text-[#050b18]">A</span>
-            </div>
+            <img
+              src={logo}
+              alt="AutoAwake AI logo"
+              className="h-10 w-10 rounded-2xl object-contain"
+            />
             <div className="leading-tight">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                 AutoAwake AI

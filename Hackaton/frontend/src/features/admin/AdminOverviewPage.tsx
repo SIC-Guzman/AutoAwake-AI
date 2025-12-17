@@ -10,6 +10,10 @@ import {
   fetchVehicles,
 } from "./api/dashboard";
 
+const SkeletonPulse = ({ className }: { className?: string }) => (
+  <div className={`animate-pulse rounded-md bg-white/10 ${className ?? ""}`} />
+);
+
 const severityBadge = (severity: string) => {
   const level = severity?.toUpperCase();
   if (level === "HIGH" || level === "CRITICAL") {
@@ -34,9 +38,9 @@ const timeAgo = (iso?: string | null) => {
 export const AdminOverviewPage = () => {
   const [
     { data: alerts, isLoading: loadingAlerts, isError: errorAlerts },
-    { data: vehicles },
-    { data: drivers },
-    { data: assignments },
+    { data: vehicles, isLoading: loadingVehicles },
+    { data: drivers, isLoading: loadingDrivers },
+    { data: assignments, isLoading: loadingAssignments },
     { data: issues, isLoading: loadingIssues },
     { data: activeTripsStats, isLoading: loadingTrips },
   ] = useQueries({
@@ -86,6 +90,8 @@ export const AdminOverviewPage = () => {
     ];
   }, [activeTripsStats, alerts, assignments, drivers, vehicles]);
 
+  const loadingKpis =
+    loadingAlerts || loadingVehicles || loadingDrivers || loadingAssignments || loadingTrips;
   const lastAlertTime = alerts?.[0]?.detected_at;
   return (
     <div className="space-y-8">
@@ -114,24 +120,37 @@ export const AdminOverviewPage = () => {
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((item) => (
-          <div
-            key={item.label}
-            className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-slate-900/40"
-          >
-            <p className="text-sm text-slate-400">{item.label}</p>
-            <div className="mt-2 flex items-end justify-between">
-              <p className="text-2xl font-bold text-white">{item.value}</p>
-              <span
-                className={`text-xs font-semibold ${
-                  item.tone === "up" ? "text-emerald-300" : "text-amber-300"
-                }`}
+        {loadingKpis
+          ? Array.from({ length: 4 }).map((_, idx) => (
+              <div
+                key={`kpi-skeleton-${idx}`}
+                className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-slate-900/40"
               >
-                {item.trend}
-              </span>
-            </div>
-          </div>
-        ))}
+                <SkeletonPulse className="h-4 w-24 bg-white/10" />
+                <div className="mt-3 flex items-end justify-between">
+                  <SkeletonPulse className="h-8 w-16" />
+                  <SkeletonPulse className="h-4 w-20" />
+                </div>
+              </div>
+            ))
+          : kpis.map((item) => (
+              <div
+                key={item.label}
+                className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-slate-900/40"
+              >
+                <p className="text-sm text-slate-400">{item.label}</p>
+                <div className="mt-2 flex items-end justify-between">
+                  <p className="text-2xl font-bold text-white">{item.value}</p>
+                  <span
+                    className={`text-xs font-semibold ${
+                      item.tone === "up" ? "text-emerald-300" : "text-amber-300"
+                    }`}
+                  >
+                    {item.trend}
+                  </span>
+                </div>
+              </div>
+            ))}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
@@ -159,9 +178,20 @@ export const AdminOverviewPage = () => {
               <span>Hace</span>
             </div>
             <div className="divide-y divide-white/5">
-              {loadingAlerts && (
-                <div className="px-4 py-3 text-sm text-slate-400">Cargando alertas...</div>
-              )}
+              {loadingAlerts &&
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <div
+                    key={`alerts-skeleton-${idx}`}
+                    className="grid grid-cols-6 items-center gap-2 px-4 py-3 text-sm"
+                  >
+                    <SkeletonPulse className="h-4 w-12" />
+                    <SkeletonPulse className="h-4 w-24" />
+                    <SkeletonPulse className="h-4 w-20" />
+                    <SkeletonPulse className="h-4 w-14" />
+                    <SkeletonPulse className="h-6 w-16 rounded-full" />
+                    <SkeletonPulse className="h-4 w-10" />
+                  </div>
+                ))}
               {!loadingAlerts && alerts?.length === 0 && (
                 <div className="px-4 py-3 text-sm text-slate-400">
                   No hay alertas registradas hoy.
@@ -209,9 +239,20 @@ export const AdminOverviewPage = () => {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-slate-900/40">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Incidencias abiertas</p>
             <div className="mt-3 space-y-3">
-              {loadingIssues && (
-                <p className="text-sm text-slate-400">Cargando incidencias...</p>
-              )}
+              {loadingIssues &&
+                Array.from({ length: 3 }).map((_, idx) => (
+                  <div
+                    key={`issue-skeleton-${idx}`}
+                    className="rounded-xl border border-white/5 bg-[#0a1224]/80 px-4 py-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <SkeletonPulse className="h-4 w-24" />
+                      <SkeletonPulse className="h-3 w-12" />
+                    </div>
+                    <SkeletonPulse className="mt-2 h-3 w-full" />
+                    <SkeletonPulse className="mt-2 h-3 w-2/3" />
+                  </div>
+                ))}
               {!loadingIssues && (issues?.length ?? 0) === 0 && (
                 <p className="text-sm text-slate-400">No hay incidencias abiertas.</p>
               )}
@@ -247,9 +288,21 @@ export const AdminOverviewPage = () => {
           </p>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {loadingTrips && (
-            <p className="text-sm text-slate-400">Cargando viajes activos...</p>
-          )}
+          {loadingTrips &&
+            Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={`trip-skeleton-${idx}`}
+                className="rounded-2xl border border-white/5 bg-[#0a1224]/80 p-4 text-sm text-slate-200"
+              >
+                <div className="flex items-center justify-between">
+                  <SkeletonPulse className="h-4 w-24" />
+                  <SkeletonPulse className="h-6 w-20 rounded-full" />
+                </div>
+                <SkeletonPulse className="mt-2 h-3 w-3/4" />
+                <SkeletonPulse className="mt-3 h-3 w-full" />
+                <SkeletonPulse className="mt-2 h-3 w-2/3" />
+              </div>
+            ))}
           {!loadingTrips && (activeTripsStats?.active_trips.length ?? 0) === 0 && (
             <p className="text-sm text-slate-400">No hay viajes activos.</p>
           )}
