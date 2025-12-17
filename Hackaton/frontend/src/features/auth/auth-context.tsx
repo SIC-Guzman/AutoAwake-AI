@@ -7,7 +7,8 @@ import {
   useState,
 } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { loginRequest, LoginResponse } from "./api/login";
+import { loginRequest } from "./api/login";
+import type { LoginResponse } from "./types";
 import { storeToken, getStoredToken } from "../../app/api/client";
 
 type AuthState = {
@@ -21,6 +22,8 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<LoginResponse>;
   logout: () => void;
   isAuthenticated: boolean;
+  isLoggingIn: boolean;
+  loginError: string | null;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -38,7 +41,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       storeToken(data.token);
       setUser({
         token: data.token,
-        role: data.role,
+        role: data.role ?? null,
         email: data.email ?? null,
       });
     },
@@ -63,13 +66,19 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       login,
       logout,
       isAuthenticated: Boolean(user.token),
+      isLoggingIn: mutation.isPending,
+      loginError: mutation.isError
+        ? (mutation.error as Error | { message?: string })?.message ??
+          "No se pudo iniciar sesión"
+        : null,
     }),
-    [login, logout, user],
+    [login, logout, mutation.error, mutation.isError, mutation.isPending, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) {

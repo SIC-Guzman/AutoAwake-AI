@@ -207,6 +207,7 @@ END$$
 -- =========================================================
 -- SP: Login de usuario (genera token de sesión)
 -- =========================================================
+DROP PROCEDURE IF EXISTS sp_login_user$$
 CREATE PROCEDURE sp_login_user (
     IN  p_email           VARCHAR(150),
     IN  p_password_plain  TEXT,
@@ -233,7 +234,7 @@ BEGIN
         v_role_id,
         v_status
     FROM users u
-    WHERE u.email = LOWER(p_email)
+    WHERE u.email COLLATE utf8mb4_unicode_ci = LOWER(p_email) COLLATE utf8mb4_unicode_ci
     LIMIT 1;
 
     IF p_user_id IS NULL THEN

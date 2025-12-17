@@ -4,8 +4,12 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
 const TOKEN_KEY = "aa_session_token";
 
-export const getStoredToken = () => localStorage.getItem(TOKEN_KEY) || null;
+const isBrowser = typeof window !== "undefined" && typeof localStorage !== "undefined";
+
+export const getStoredToken = () =>
+  isBrowser ? localStorage.getItem(TOKEN_KEY) || null : null;
 export const storeToken = (token: string | null) => {
+  if (!isBrowser) return;
   if (token) {
     localStorage.setItem(TOKEN_KEY, token);
   } else {

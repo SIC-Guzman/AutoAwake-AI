@@ -155,12 +155,35 @@ class Database:
         try:
             with conn.cursor(dictionary=True) as cursor:
                 proc_args = args or []
-                result = cursor.callproc(name, proc_args)
+                proc_result = cursor.callproc(name, proc_args)
+                result_list = list(proc_result)
+                # Algunas versiones del conector devuelven placeholders como
+                # 'sp_login_user_arg3' en vez del valor del OUT param. Los
+                # recuperamos con un SELECT a las variables de sesión.
+                placeholders: List[Tuple[int, str]] = []
+                for idx, val in enumerate(result_list):
+                    if not isinstance(val, str):
+                        continue
+                    if val.startswith(f"{name}_arg"):
+                        placeholders.append((idx, val))
+                    elif val.startswith(f"@_{name}_"):
+                        # Algunos conectores devuelven el prefijo '@_' incluido
+                        placeholders.append((idx, val[2:]))
+
+                if placeholders:
+                    select_expr = ", ".join(
+                        f"@_{ph} AS `{ph}`" for _, ph in placeholders
+                    )
+                    cursor.execute(f"SELECT {select_expr}")
+                    row = cursor.fetchone()
+                    for idx, ph in placeholders:
+                        result_list[idx] = row[ph]
+
                 result_sets: List[List[Dict[str, Any]]] = []
                 for rs in cursor.stored_results():
                     result_sets.append(rs.fetchall())
                 conn.commit()
-                return list(result), result_sets
+                return result_list, result_sets
         finally:
             conn.close()
 
