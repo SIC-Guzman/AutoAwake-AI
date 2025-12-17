@@ -7,6 +7,12 @@ from database.autoawake_db import (
     list_alerts_by_trip,
     list_alerts_by_vehicle,
     list_alerts_by_driver,
+    start_trip,
+    end_trip,
+    get_active_trip_by_pair,
+    get_driver_by_full_name,
+    get_vehicle_by_plate,
+    consume_trip_plan,
 )
 from schemas.crud_schemas import AlertLog, AlertResponse
 from services.mqtt_service import mqtt_service
@@ -24,7 +30,56 @@ def create_alert(
     current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db),
 ):
+    """
+    Maneja alertas normales y el modo especial TRIP:
+    - Si alert_type == "TRIP" y viene driver/vehicle, inicia/termina viaje y registra alerta.
+    - Si viene trip_id, registra la alerta normal.
+    """
     try:
+        if alert.alert_type == "TRIP":
+            driver_id = alert.driver_id
+            vehicle_id = alert.vehicle_id
+            if not driver_id and alert.driver_name:
+                driver = get_driver_by_full_name(db, alert.driver_name)
+                driver_id = driver["driver_id"] if driver else None
+            if not vehicle_id and alert.vehicle_plate:
+                vehicle = get_vehicle_by_plate(db, alert.vehicle_plate)
+                vehicle_id = vehicle["vehicle_id"] if vehicle else None
+
+            if not (driver_id and vehicle_id):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="driver_id/driver_name y vehicle_id/vehicle_plate son necesarios para TRIP",
+                )
+
+            active_trip = get_active_trip_by_pair(db, driver_id, vehicle_id)
+            if active_trip:
+                end_trip(db, active_trip["trip_id"], None)
+                trip_id = active_trip["trip_id"]
+                action_msg = alert.message or "Trip finalizado automáticamente por alerta TRIP"
+            else:
+                plan = consume_trip_plan(db, driver_id, vehicle_id)
+                origin = alert.origin or (plan["origin"] if plan else "Origen automático")
+                destination = alert.destination or (plan["destination"] if plan else "Destino asignado")
+                trip_id = start_trip(db, vehicle_id, driver_id, origin, destination)
+                action_msg = alert.message or "Trip iniciado automáticamente por alerta TRIP"
+
+            log_alert(db, trip_id, "TRIP", alert.severity, action_msg)
+            telegram_service.send_alert(
+                db,
+                "TRIP",
+                alert.severity,
+                action_msg,
+                trip_id,
+            )
+            return {"message": "TRIP alert processed", "trip_id": trip_id}
+
+        if not alert.trip_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="trip_id es requerido para registrar alertas normales",
+            )
+
         log_alert(
             db,
             alert.trip_id,
@@ -40,6 +95,8 @@ def create_alert(
             alert.trip_id,
         )
         return {"message": "Alert logged successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -557,7 +557,7 @@ def list_assignments(
 
 
 # ---------------------------
-# TRIPS (usando SPs)
+# TRIPS (usando SPs) y planes
 # ---------------------------
 
 def start_trip(
@@ -601,6 +601,24 @@ def start_trip(
     return int(row["trip_id"])
 
 
+def get_active_trip_by_pair(
+    db: Database,
+    driver_id: int,
+    vehicle_id: int,
+) -> Optional[Dict[str, Any]]:
+    """
+    Devuelve el viaje activo (IN_PROGRESS) para un driver/vehículo, si existe.
+    """
+    query = """
+        SELECT * FROM trips
+        WHERE driver_id = %s
+          AND vehicle_id = %s
+          AND status = 'IN_PROGRESS'
+        ORDER BY started_at DESC
+        LIMIT 1
+    """
+    return db.fetch_one(query, (driver_id, vehicle_id))
+
 
 def end_trip(
     db: Database,
@@ -619,6 +637,100 @@ def get_trip_by_id(db: Database, trip_id: int) -> Optional[Dict[str, Any]]:
     query = "SELECT * FROM trips WHERE trip_id = %s"
     return db.fetch_one(query, (trip_id,))
 
+
+def get_driver_by_full_name(
+    db: Database,
+    full_name: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Busca exacto por CONCAT(first_name, ' ', last_name).
+    """
+    query = """
+        SELECT * FROM drivers
+        WHERE CONCAT(first_name, ' ', last_name) = %s
+        LIMIT 1
+    """
+    return db.fetch_one(query, (full_name,))
+
+
+def get_vehicle_by_plate(
+    db: Database,
+    plate: str,
+) -> Optional[Dict[str, Any]]:
+    query = "SELECT * FROM vehicles WHERE plate = %s LIMIT 1"
+    return db.fetch_one(query, (plate,))
+
+# ---------------------------
+# TRIP PLANS (pendientes de iniciar)
+# ---------------------------
+
+def create_trip_plan(
+    db: Database,
+    driver_id: int,
+    vehicle_id: int,
+    origin: str,
+    destination: str,
+) -> int:
+    query = """
+        INSERT INTO trip_plans (driver_id, vehicle_id, origin, destination)
+        VALUES (%s, %s, %s, %s)
+    """
+    return db.execute(query, (driver_id, vehicle_id, origin, destination), return_lastrowid=True) or 0
+
+
+def list_trip_plans(db: Database, active_only: bool = False) -> List[Dict[str, Any]]:
+    where_clause = "WHERE tp.is_active = 1" if active_only else ""
+    query = f"""
+        SELECT
+            tp.*,
+            CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
+            d.license_number,
+            v.plate AS vehicle_plate,
+            v.brand,
+            v.model
+        FROM trip_plans tp
+        JOIN drivers d ON d.driver_id = tp.driver_id
+        JOIN vehicles v ON v.vehicle_id = tp.vehicle_id
+        {where_clause}
+        ORDER BY tp.created_at DESC
+    """
+    return db.fetch_all(query)
+
+
+def consume_trip_plan(
+    db: Database,
+    driver_id: int,
+    vehicle_id: int,
+) -> Optional[Dict[str, Any]]:
+    """
+    Recupera el plan activo más reciente para el driver/vehículo y lo marca como usado.
+    """
+    conn = db._get_connection()
+    try:
+        with conn.cursor(dictionary=True) as cursor:
+            cursor.execute(
+                """
+                SELECT *
+                FROM trip_plans
+                WHERE driver_id = %s
+                  AND vehicle_id = %s
+                  AND is_active = 1
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (driver_id, vehicle_id),
+            )
+            plan = cursor.fetchone()
+            if not plan:
+                return None
+            cursor.execute(
+                "UPDATE trip_plans SET is_active = 0, used_at = NOW() WHERE plan_id = %s",
+                (plan["plan_id"],),
+            )
+            conn.commit()
+            return plan
+    finally:
+        conn.close()
 
 def list_trips_by_driver(
     db: Database,

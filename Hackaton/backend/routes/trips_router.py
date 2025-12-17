@@ -8,8 +8,10 @@ from database.autoawake_db import (
     get_trip_by_id,
     list_trips_by_driver,
     list_trips_by_vehicle,
+    create_trip_plan,
+    list_trip_plans,
 )
-from schemas.crud_schemas import TripStart, TripEnd, TripResponse
+from schemas.crud_schemas import TripStart, TripEnd, TripResponse, TripPlanCreate, TripPlanResponse
 
 router = APIRouter(prefix="/trips", tags=["Trips"])
 
@@ -54,6 +56,38 @@ def list_all_trips(
         LIMIT %s
     """
     return db.fetch_all(query, (limit,))
+
+
+@router.post("/plans", response_model=TripPlanResponse)
+def create_plan(
+    plan: TripPlanCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
+):
+    try:
+        plan_id = create_trip_plan(db, plan.driver_id, plan.vehicle_id, plan.origin, plan.destination)
+        plans = list_trip_plans(db, active_only=False)
+        created = next((p for p in plans if p["plan_id"] == plan_id), None)
+        if not created:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No se pudo recuperar el plan creado",
+            )
+        return created
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.get("/plans", response_model=List[TripPlanResponse])
+def list_plans(
+    active_only: bool = False,
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
+):
+    return list_trip_plans(db, active_only)
 
 @router.post("/", response_model=TripResponse)
 def start_new_trip(

@@ -1,6 +1,7 @@
 import { PropsWithChildren } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/auth-context";
+import { AdminNav } from "../../admin/components/AdminNav";
 
 const baseLinks = [
   { to: "/", label: "Inicio" },
@@ -15,7 +16,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
     : baseLinks;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#050b18] text-slate-100">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#050b18] text-slate-100">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-32 top-10 h-72 w-72 rounded-full bg-cyan-500/10 blur-[90px]" />
         <div className="absolute right-0 top-28 h-96 w-96 rounded-full bg-sky-400/10 blur-[110px]" />
@@ -85,8 +86,9 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
           </div>
         </div>
       </header>
+      <AdminNav />
 
-      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-10 sm:px-6 lg:px-8">
+      <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-10 sm:px-6 lg:px-8">
         {children}
       </main>
 
