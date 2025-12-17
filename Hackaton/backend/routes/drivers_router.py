@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
+from core.deps import get_current_user, get_db
 from database.autoawake_db import (
     Database,
     create_driver,
     get_driver_by_id,
     list_drivers,
     deactivate_driver,
-    update_driver as update_driver_db
+    update_driver as update_driver_db,
 )
 from schemas.crud_schemas import DriverCreate, DriverUpdate, DriverResponse
-from utils.security import get_current_user
-from utils.db_instance import get_db_instance
 
 router = APIRouter(prefix="/drivers", tags=["Drivers"])
 
@@ -18,7 +17,7 @@ router = APIRouter(prefix="/drivers", tags=["Drivers"])
 def create_new_driver(
     driver: DriverCreate,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     try:
         driver_id = create_driver(
@@ -42,7 +41,7 @@ def create_new_driver(
 def get_driver(
     driver_id: int,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     driver = get_driver_by_id(db, driver_id)
     if not driver:
@@ -56,7 +55,7 @@ def get_driver(
 def get_all_drivers(
     status: str = None,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     return list_drivers(db, status)
 
@@ -65,7 +64,7 @@ def update_driver_info(
     driver_id: int,
     driver_data: DriverUpdate,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     # Verificar que el conductor existe
     driver = get_driver_by_id(db, driver_id)
@@ -99,7 +98,7 @@ def update_driver_info(
 def delete_driver(
     driver_id: int,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     driver = get_driver_by_id(db, driver_id)
     if not driver:

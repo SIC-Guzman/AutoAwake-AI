@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
+from core.deps import get_current_user, get_db
 from database.autoawake_db import (
     Database,
     create_vehicle,
     get_vehicle_by_id,
     list_vehicles,
-    update_vehicle_status
+    update_vehicle_status,
 )
 from schemas.crud_schemas import VehicleCreate, VehicleResponse, VehicleStatusUpdate
-from utils.security import get_current_user
-from utils.db_instance import get_db_instance
 
 router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
 
@@ -17,7 +16,7 @@ router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
 def create_new_vehicle(
     vehicle: VehicleCreate,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     try:
         vehicle_id = create_vehicle(
@@ -41,7 +40,7 @@ def create_new_vehicle(
 def get_vehicle(
     vehicle_id: int,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     vehicle = get_vehicle_by_id(db, vehicle_id)
     if not vehicle:
@@ -55,7 +54,7 @@ def get_vehicle(
 def get_all_vehicles(
     status: str = None,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     return list_vehicles(db, status)
 
@@ -64,7 +63,7 @@ def update_status(
     vehicle_id: int,
     status_update: VehicleStatusUpdate,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     vehicle = get_vehicle_by_id(db, vehicle_id)
     if not vehicle:

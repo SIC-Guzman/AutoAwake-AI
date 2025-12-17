@@ -3,6 +3,9 @@ USE AutoAwakeAI;
 
 -- Limpiar tablas (opcional si ya probaste cosas antes)
 SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE user_sessions;
+TRUNCATE TABLE users;
+TRUNCATE TABLE roles;
 TRUNCATE TABLE alerts;
 TRUNCATE TABLE issues;
 TRUNCATE TABLE trips;
@@ -11,6 +14,42 @@ TRUNCATE TABLE devices;
 TRUNCATE TABLE vehicles;
 TRUNCATE TABLE drivers;
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- =========================================================
+-- ROLES
+-- =========================================================
+INSERT INTO roles (role_id, name, description) VALUES
+(1, 'ADMIN',   'Administrator with full access'),
+(2, 'MANAGER', 'Fleet manager with monitoring access'),
+(3, 'DRIVER',  'Driver with limited access')
+ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
+
+-- =========================================================
+-- USERS (ejemplo con password hasheada)
+-- =========================================================
+SET @salt_admin = UUID();
+SET @salt_manager = UUID();
+
+INSERT INTO users (
+    full_name, email, password_hash, password_salt, role_id, status
+) VALUES
+(
+    'Admin AutoAwake',
+    'admin@autoawake.ai',
+    UPPER(SHA2(CONCAT('admin123', @salt_admin), 256)),
+    @salt_admin,
+    (SELECT role_id FROM roles WHERE name = 'ADMIN' LIMIT 1),
+    'ACTIVE'
+),
+(
+    'Manager Demo',
+    'manager@autoawake.ai',
+    UPPER(SHA2(CONCAT('manager123', @salt_manager), 256)),
+    @salt_manager,
+    (SELECT role_id FROM roles WHERE name = 'MANAGER' LIMIT 1),
+    'ACTIVE'
+)
+ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), role_id = VALUES(role_id);
 
 -- =========================================================
 -- DRIVERS

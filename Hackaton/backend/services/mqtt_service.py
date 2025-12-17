@@ -1,24 +1,32 @@
 import json
-import os
 import threading
 import paho.mqtt.client as mqtt
-from database.autoawake_db import Database, log_alert
-from utils.db_instance import get_db_instance
+from core.config import settings
+from database.autoawake_db import (
+    Database,
+    log_alert,
+    start_trip,
+    end_trip,
+    get_active_trip_by_pair,
+    get_driver_by_full_name,
+    get_vehicle_by_plate,
+    consume_trip_plan,
+)
 from services.telegram_service import telegram_service
 
 import ssl
 
 class MQTTService:
     def __init__(self):
-        self.broker = os.getenv("MQTT_BROKER", "localhost")
-        self.port = int(os.getenv("MQTT_PORT", 1883))
-        self.username = os.getenv("MQTT_USER")
-        self.password = os.getenv("MQTT_PASSWORD")
-        self.topic_alerts = "autoawake/alerts"
-        self.topic_control = "autoawake/control"
-        
+        self.broker = settings.mqtt_broker
+        self.port = settings.mqtt_port
+        self.username = settings.mqtt_user
+        self.password = settings.mqtt_password
+        self.topic_alerts = settings.mqtt_topic_alerts
+        self.topic_control = settings.mqtt_topic_control
+
         self.client = mqtt.Client()
-        
+
         if self.username and self.password:
             self.client.username_pw_set(self.username, self.password)
             
@@ -61,6 +69,44 @@ class MQTTService:
             alert_type = payload.get("alert_type")
             severity = payload.get("severity")
             message = payload.get("message")
+
+            if alert_type == "TRIP":
+                # Manejo especial: toggle de viaje usando driver/vehículo
+                driver_id = payload.get("driver_id")
+                vehicle_id = payload.get("vehicle_id")
+                if not driver_id and payload.get("driver_name"):
+                    driver = get_driver_by_full_name(self.db, payload["driver_name"])
+                    driver_id = driver["driver_id"] if driver else None
+                if not vehicle_id and payload.get("vehicle_plate"):
+                    vehicle = get_vehicle_by_plate(self.db, payload["vehicle_plate"])
+                    vehicle_id = vehicle["vehicle_id"] if vehicle else None
+
+                if not (driver_id and vehicle_id):
+                    print("TRIP alert missing driver/vehicle identifiers.")
+                    return
+
+                active_trip = get_active_trip_by_pair(self.db, driver_id, vehicle_id)
+                if active_trip:
+                    end_trip(self.db, active_trip["trip_id"], None)
+                    trip_id = active_trip["trip_id"]
+                    action_msg = "Trip finalizado automáticamente por alerta TRIP"
+                else:
+                    plan = consume_trip_plan(self.db, driver_id, vehicle_id)
+                    origin = payload.get("origin") or (plan["origin"] if plan else "Origen automático")
+                    destination = payload.get("destination") or (plan["destination"] if plan else "Destino asignado")
+                    trip_id = start_trip(self.db, vehicle_id, driver_id, origin, destination)
+                    action_msg = "Trip iniciado automáticamente por alerta TRIP"
+
+                log_alert(self.db, trip_id, "TRIP", severity or "LOW", message or action_msg)
+                telegram_service.send_alert(
+                    self.db,
+                    "TRIP",
+                    severity or "LOW",
+                    message or action_msg,
+                    trip_id,
+                )
+                print(f"TRIP alert processed for trip {trip_id}")
+                return
 
             if all([trip_id, alert_type, severity, message]):
                 log_alert(self.db, trip_id, alert_type, severity, message)

@@ -135,3 +135,38 @@ SELECT
 FROM vehicles v
 LEFT JOIN devices d ON d.vehicle_id = v.vehicle_id
 LEFT JOIN v_vehicle_last_alert la ON la.vehicle_id = v.vehicle_id;
+
+-- =========================================================
+-- VISTA: Usuarios con rol (para dashboard / admin)
+-- =========================================================
+CREATE OR REPLACE VIEW v_users AS
+SELECT
+    u.user_id,
+    u.full_name,
+    u.email,
+    r.name        AS role_name,
+    u.status,
+    u.last_login_at,
+    u.created_at,
+    u.updated_at
+FROM users u
+JOIN roles r ON r.role_id = u.role_id;
+
+-- =========================================================
+-- VISTA: Sesiones activas (token vigente y no revocado)
+-- =========================================================
+CREATE OR REPLACE VIEW v_active_sessions AS
+SELECT
+    s.session_id,
+    s.user_id,
+    u.full_name,
+    u.email,
+    r.name      AS role_name,
+    s.token,
+    s.created_at,
+    s.expires_at
+FROM user_sessions s
+JOIN users u ON u.user_id = s.user_id
+JOIN roles r ON r.role_id = u.role_id
+WHERE s.revoked_at IS NULL
+  AND s.expires_at > NOW();

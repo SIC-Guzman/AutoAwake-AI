@@ -1,61 +1,65 @@
-from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from models.user import User
-from utils.handle_bcrypt import hash_password, verify_password
-from utils.web_token import gen_token
+from database.autoawake_db import (
+    Database,
+    get_active_session,
+    get_user_by_email,
+    login_user,
+    logout_session,
+    register_user,
+)
 
 
 class AuthService:
     """
-    Servicio de autenticación: login y register
+    Servicio de autenticación basado en stored procedures y sesiones en BD.
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Database):
         self.db = db
 
     def login(self, email: str, password: str) -> dict:
-        user = self.db.query(User).filter(User.email == email).first()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="INVALID_CREDENTIALS"
-            )
+        try:
+            session_data = login_user(self.db, email, password)
+            session = get_active_session(self.db, session_data["session_token"])
+            return {
+                "token": session_data["session_token"],
+                "user_id": session_data["user_id"],
+                "role": session_data["role_name"],
+                "email": session["email"] if session else email,
+                "expires_at": session["expires_at"] if session else None,
+            }
+        except Exception as exc:
+            # La SP devuelve SIGNAL con SQLSTATE 45000; mysql-connector lo propaga como Exception.
+            message = str(exc)
+            if "INVALID_CREDENTIALS" in message:
+                detail = "INVALID_CREDENTIALS"
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail=detail
+                ) from exc
+            if "USER_DISABLED" in message:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, detail="USER_DISABLED"
+                ) from exc
+            raise
 
-        if not verify_password(password, user.password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="INVALID_CREDENTIALS"
-            )
-
-        token = gen_token({
-            "id": user.id,
-            "email": user.email,
-            "role": user.role.description if user.role else None
-        })
-        return {"token": token}
-
-    def register(self, name: str, email: str, password: str, role_id: int) -> dict:
-        existing_user = self.db.query(User).filter(User.email == email).first()
-        if existing_user:
+    def register(self, name: str, email: str, password: str, role_name: str) -> dict:
+        if get_user_by_email(self.db, email):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="EMAIL_ALREADY_EXISTS"
+                detail="EMAIL_ALREADY_EXISTS",
             )
 
-        hashed_password = hash_password(password)
-        new_user = User(
-            name=name,
-            email=email,
-            password=hashed_password,
-            role_id=role_id
-        )
-        self.db.add(new_user)
-        self.db.commit()
-        self.db.refresh(new_user)
+        try:
+            register_user(self.db, name, email, password, role_name)
+        except Exception as exc:
+            if "ROLE_NOT_FOUND" in str(exc):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="ROLE_NOT_FOUND"
+                ) from exc
+            raise
 
-        token = gen_token({
-            "id": new_user.id,
-            "email": new_user.email,
-            "role": new_user.role.description if new_user.role else None
-        })
-        return {"token": token}
+        return self.login(email, password)
+
+    def logout(self, token: str) -> dict:
+        logout_session(self.db, token)
+        return {"message": "Session revoked"}

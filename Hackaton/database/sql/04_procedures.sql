@@ -157,4 +157,125 @@ BEGIN
     WHERE device_id = p_device_id;
 END$$
 
+-- =========================================================
+-- SP: Registrar usuario (hash en BD + validación de rol)
+-- =========================================================
+CREATE PROCEDURE sp_register_user (
+    IN  p_full_name       VARCHAR(120),
+    IN  p_email           VARCHAR(150),
+    IN  p_password_plain  TEXT,
+    IN  p_role_name       VARCHAR(50),
+    OUT p_user_id         BIGINT UNSIGNED
+)
+BEGIN
+    DECLARE v_role_id  TINYINT UNSIGNED;
+    DECLARE v_salt     CHAR(36);
+    DECLARE v_hash     CHAR(64);
+
+    SELECT role_id
+    INTO   v_role_id
+    FROM roles
+    WHERE name = p_role_name
+    LIMIT 1;
+
+    IF v_role_id IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'ROLE_NOT_FOUND';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM users WHERE email = LOWER(p_email)) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'EMAIL_ALREADY_EXISTS';
+    END IF;
+
+    SET v_salt = UUID();
+    SET v_hash = UPPER(SHA2(CONCAT(p_password_plain, v_salt), 256));
+
+    INSERT INTO users (
+        full_name, email, password_hash, password_salt, role_id
+    ) VALUES (
+        p_full_name,
+        LOWER(p_email),
+        v_hash,
+        v_salt,
+        v_role_id
+    );
+
+    SET p_user_id = LAST_INSERT_ID();
+END$$
+
+-- =========================================================
+-- SP: Login de usuario (genera token de sesión)
+-- =========================================================
+DROP PROCEDURE IF EXISTS sp_login_user$$
+CREATE PROCEDURE sp_login_user (
+    IN  p_email           VARCHAR(150),
+    IN  p_password_plain  TEXT,
+    OUT p_user_id         BIGINT UNSIGNED,
+    OUT p_role_name       VARCHAR(50),
+    OUT p_session_token   CHAR(36)
+)
+BEGIN
+    DECLARE v_hash     CHAR(64);
+    DECLARE v_salt     CHAR(36);
+    DECLARE v_role_id  TINYINT UNSIGNED;
+    DECLARE v_status   ENUM('ACTIVE', 'DISABLED');
+
+    SELECT
+        u.user_id,
+        u.password_hash,
+        u.password_salt,
+        u.role_id,
+        u.status
+    INTO
+        p_user_id,
+        v_hash,
+        v_salt,
+        v_role_id,
+        v_status
+    FROM users u
+    WHERE u.email COLLATE utf8mb4_unicode_ci = LOWER(p_email) COLLATE utf8mb4_unicode_ci
+    LIMIT 1;
+
+    IF p_user_id IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'INVALID_CREDENTIALS';
+    END IF;
+
+    IF v_status <> 'ACTIVE' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'USER_DISABLED';
+    END IF;
+
+    IF v_hash <> UPPER(SHA2(CONCAT(p_password_plain, v_salt), 256)) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'INVALID_CREDENTIALS';
+    END IF;
+
+    UPDATE users
+    SET last_login_at = NOW()
+    WHERE user_id = p_user_id;
+
+    SELECT name INTO p_role_name
+    FROM roles
+    WHERE role_id = v_role_id;
+
+    SET p_session_token = UUID();
+    INSERT INTO user_sessions (user_id, token)
+    VALUES (p_user_id, p_session_token);
+END$$
+
+-- =========================================================
+-- SP: Cerrar sesión (revocar token)
+-- =========================================================
+CREATE PROCEDURE sp_logout_session (
+    IN p_session_token CHAR(36)
+)
+BEGIN
+    UPDATE user_sessions
+    SET revoked_at = NOW()
+    WHERE token = p_session_token
+      AND revoked_at IS NULL;
+END$$
+
 DELIMITER ;

@@ -1,16 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
+from core.deps import get_current_user, get_db
 from database.autoawake_db import (
     Database,
     start_trip,
     end_trip,
     get_trip_by_id,
     list_trips_by_driver,
-    list_trips_by_vehicle
+    list_trips_by_vehicle,
+    create_trip_plan,
+    list_trip_plans,
 )
-from schemas.crud_schemas import TripStart, TripEnd, TripResponse
-from utils.security import get_current_user
-from utils.db_instance import get_db_instance
+from schemas.crud_schemas import TripStart, TripEnd, TripResponse, TripPlanCreate, TripPlanResponse
 
 router = APIRouter(prefix="/trips", tags=["Trips"])
 
@@ -19,7 +20,7 @@ def list_all_trips(
     status: str = None,
     limit: int = 100,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     """
     Lista todos los viajes, opcionalmente filtrados por estado
@@ -56,11 +57,43 @@ def list_all_trips(
     """
     return db.fetch_all(query, (limit,))
 
+
+@router.post("/plans", response_model=TripPlanResponse)
+def create_plan(
+    plan: TripPlanCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
+):
+    try:
+        plan_id = create_trip_plan(db, plan.driver_id, plan.vehicle_id, plan.origin, plan.destination)
+        plans = list_trip_plans(db, active_only=False)
+        created = next((p for p in plans if p["plan_id"] == plan_id), None)
+        if not created:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No se pudo recuperar el plan creado",
+            )
+        return created
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.get("/plans", response_model=List[TripPlanResponse])
+def list_plans(
+    active_only: bool = False,
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
+):
+    return list_trip_plans(db, active_only)
+
 @router.post("/", response_model=TripResponse)
 def start_new_trip(
     trip: TripStart,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     try:
         trip_id = start_trip(
@@ -84,7 +117,7 @@ def end_current_trip(
     trip_id: int,
     trip_end: TripEnd,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     try:
         end_trip(db, trip_id, trip_end.status)
@@ -99,7 +132,7 @@ def end_current_trip(
 def get_trip(
     trip_id: int,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     trip = get_trip_by_id(db, trip_id)
     if not trip:
@@ -114,7 +147,7 @@ def get_trips_by_driver(
     driver_id: int,
     limit: int = 50,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     return list_trips_by_driver(db, driver_id, limit)
 
@@ -123,14 +156,14 @@ def get_trips_by_vehicle(
     vehicle_id: int,
     limit: int = 50,
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     return list_trips_by_vehicle(db, vehicle_id, limit)
 
 @router.get("/stats/active")
 def get_active_trips_stats(
     current_user: dict = Depends(get_current_user),
-    db: Database = Depends(get_db_instance)
+    db: Database = Depends(get_db),
 ):
     """
     Obtiene estadísticas de viajes activos con alertas de somnolencia
