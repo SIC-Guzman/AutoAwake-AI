@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosHeaders } from "axios";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
@@ -25,10 +25,12 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const token = getStoredToken();
   if (token) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    };
+    const headers =
+      config.headers instanceof AxiosHeaders
+        ? config.headers
+        : new AxiosHeaders(config.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    config.headers = headers;
   }
   return config;
 });

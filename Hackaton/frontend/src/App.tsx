@@ -7,6 +7,7 @@ import { AdminVehiclesPage } from "./features/admin/AdminVehiclesPage";
 import { AdminTripsPage } from "./features/admin/AdminTripsPage";
 import { AdminAlertsPage } from "./features/admin/AdminAlertsPage";
 import { AdminTripPlanPage } from "./features/admin/AdminTripPlanPage";
+import { AdminSignalsPage } from "./features/admin/AdminSignalsPage";
 import { LoginPage } from "./features/auth/components/LoginPage";
 import { ProtectedRoute } from "./features/auth/components/ProtectedRoute";
 import { AppLayout } from "./features/layout/components/AppLayout";
@@ -65,6 +66,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AdminTripsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/signals"
+            element={
+              <ProtectedRoute>
+                <AdminSignalsPage />
               </ProtectedRoute>
             }
           />

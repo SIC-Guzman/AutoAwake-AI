@@ -1,4 +1,5 @@
-import { FormEvent, useState } from "react";
+import type { FormEvent } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createTripPlan, fetchDriversList, fetchTripPlans, fetchVehiclesList } from "./api/listings";
 
@@ -96,10 +97,10 @@ export const AdminTripPlanPage = () => {
         <div className="sm:col-span-2 flex items-center gap-3">
           <button
             type="submit"
-            disabled={mutation.isLoading}
+            disabled={mutation.isPending}
             className="rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 px-5 py-3 text-sm font-semibold text-[#041022] shadow-lg shadow-cyan-500/25 transition hover:-translate-y-[1px] disabled:opacity-70"
           >
-            {mutation.isLoading ? "Guardando..." : "Crear plan"}
+            {mutation.isPending ? "Guardando..." : "Crear plan"}
           </button>
           {mutation.isError && (
             <p className="text-sm text-red-200">No se pudo crear el plan. Revisa el backend.</p>
