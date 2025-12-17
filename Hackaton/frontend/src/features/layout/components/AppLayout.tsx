@@ -1,4 +1,4 @@
-import { PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/auth-context";
 import { AdminNav } from "../../admin/components/AdminNav";
